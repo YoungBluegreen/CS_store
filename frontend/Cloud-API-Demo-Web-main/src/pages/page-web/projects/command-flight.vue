@@ -1061,14 +1061,18 @@ button {
 }
 
 .attitude-orb {
-  left: 14px;
+  left: 18px;
   width: 158px;
-  padding: 10px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .orb-title,
 .overview-head span {
-  color: rgba(223, 250, 255, 0.68);
+  color: rgba(223, 250, 255, 0.46);
   font-size: 12px;
 }
 
@@ -1153,7 +1157,7 @@ button {
 .orb-meta {
   display: flex;
   justify-content: space-between;
-  color: #62e6ff;
+  color: rgba(98, 230, 255, 0.72);
   font-family: Consolas, monospace;
   font-size: 11px;
 }
@@ -1710,24 +1714,26 @@ button {
   left: 18px;
   bottom: 18px;
   z-index: 7;
-  width: 236px;
+  width: 158px;
+  padding: 0;
   margin-top: 0;
-  border-color: rgba(98, 230, 255, 0.42);
-  background: linear-gradient(180deg, rgba(4, 31, 58, 0.86), rgba(1, 15, 32, 0.8));
-  box-shadow: inset 0 0 28px rgba(98, 230, 255, 0.12), 0 0 24px rgba(0, 18, 32, 0.52);
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .gimbal-sight-title {
-  margin-bottom: 10px;
-  color: rgba(223, 250, 255, 0.76);
+  margin-bottom: 8px;
+  color: rgba(223, 250, 255, 0.52);
   font-size: 12px;
   letter-spacing: 0;
 }
 
 .gimbal-sight-base {
   position: relative;
-  width: 150px;
-  height: 150px;
+  width: 112px;
+  height: 112px;
   margin: 0 auto;
   border: 1px solid rgba(98, 230, 255, 0.36);
   border-radius: 50%;
@@ -1739,8 +1745,8 @@ button {
 
 .gimbal-sight-dot {
   position: absolute;
-  top: 65px;
-  left: 65px;
+  top: 46px;
+  left: 46px;
   width: 20px;
   height: 20px;
   border-radius: 50%;
@@ -1752,24 +1758,24 @@ button {
 .gimbal-sight-labels {
   display: flex;
   justify-content: space-between;
-  margin-top: 12px;
-  color: rgba(223, 250, 255, 0.72);
-  font-size: 12px;
+  margin-top: 10px;
+  color: rgba(223, 250, 255, 0.58);
+  font-size: 11px;
 }
 
 .gimbal-sight-hud .gimbal-sight-title,
 .gimbal-sight-hud .gimbal-sight-labels {
-  color: #dffaff;
+  color: rgba(223, 250, 255, 0.62);
 }
 
 .gimbal-sight-hud .gimbal-sight-base {
-  width: 144px;
-  height: 144px;
+  width: 112px;
+  height: 112px;
 }
 
 .gimbal-sight-hud .gimbal-sight-dot {
-  top: 62px;
-  left: 62px;
+  top: 46px;
+  left: 46px;
   box-shadow: 0 0 22px #62e6ff, 0 0 36px rgba(98, 230, 255, 0.36);
 }
 
@@ -2044,6 +2050,12 @@ kbd.active {
     padding: 8px;
   }
 
+  .gimbal-sight-hud {
+    left: 8px;
+    width: 116px;
+    padding: 8px;
+  }
+
   .overview-map {
     right: 8px;
     width: 124px;
@@ -2057,7 +2069,25 @@ kbd.active {
   }
 
   .orb-meta {
-    display: none;
+    display: flex;
+    font-size: 10px;
+  }
+
+  .gimbal-sight-base,
+  .gimbal-sight-hud .gimbal-sight-base {
+    width: 76px;
+    height: 76px;
+  }
+
+  .gimbal-sight-dot,
+  .gimbal-sight-hud .gimbal-sight-dot {
+    top: 28px;
+    left: 28px;
+  }
+
+  .gimbal-sight-title,
+  .gimbal-sight-labels {
+    font-size: 10px;
   }
 
   .overview-body {
