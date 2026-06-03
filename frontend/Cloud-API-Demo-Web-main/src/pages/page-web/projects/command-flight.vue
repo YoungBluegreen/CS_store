@@ -136,6 +136,23 @@
             {{ mode }}
           </button>
         </div>
+        <div class="control-mode-panel">
+          <div class="keyboard-title">
+            <strong>飞控模式</strong>
+            <span>{{ controlMode === 'GPS' ? '定位保持' : '手动姿态' }}</span>
+          </div>
+          <div class="control-mode-switch">
+            <button :class="{ active: controlMode === 'GPS' }" @click="setControlMode('GPS')">
+              <strong>GPS</strong>
+              <span>稳定位移</span>
+            </button>
+            <button :class="{ active: controlMode === 'ATTI' }" @click="setControlMode('ATTI')">
+              <strong>姿态</strong>
+              <span>风漂惯性</span>
+            </button>
+          </div>
+          <p>{{ controlModeHint }}</p>
+        </div>
         <div class="command-grid">
           <button
             v-for="command in commands"
@@ -287,8 +304,11 @@ interface KeyboardMapGroup {
   items: KeyboardMapItem[]
 }
 
+type ControlMode = 'GPS' | 'ATTI'
+
 const router = useRouter()
 const activeMode = ref('指令')
+const controlMode = ref<ControlMode>('GPS')
 const currentTime = ref('')
 const clockTimer = ref<number | null>(null)
 const simTimer = ref<number | null>(null)
@@ -297,6 +317,10 @@ const pitch = ref(10)
 const logSeed = ref(4)
 const activeKeyLabel = ref('等待键盘输入')
 const pressedKeys = reactive<Record<string, boolean>>({})
+const driftState = reactive({
+  x: 0,
+  y: 0,
+})
 const flightState = reactive<FlightState>({
   speed: 8.2,
   altitude: 120,
@@ -336,9 +360,17 @@ const telemetry = computed(() => [
   { label: '速度', value: flightState.speed.toFixed(1), unit: 'm/s' },
   { label: '航向', value: `${Math.round(flightState.heading)}`, unit: 'deg' },
   { label: '电量', value: `${Math.round(flightState.battery)}`, unit: '%' },
-  { label: '风速', value: flightState.wind.toFixed(1), unit: 'm/s' },
-  { label: 'RTK', value: '固定', unit: '' },
+  { label: '模式', value: controlMode.value, unit: controlMode.value === 'GPS' ? '定位' : '姿态' },
+  { label: '漂移', value: driftMagnitude.value.toFixed(1), unit: 'm' },
 ])
+
+const driftMagnitude = computed(() => Math.hypot(driftState.x, driftState.y))
+
+const controlModeHint = computed(() => (
+  controlMode.value === 'GPS'
+    ? 'GPS 模式：定位保持开启，松杆后自动刹停，抗风漂移。'
+    : '姿态模式：GPS 定位保持关闭，松杆后保留惯性并受风向漂移。'
+))
 
 const headingLabel = computed(() => `${Math.round(flightState.heading).toString().padStart(3, '0')}°`)
 
@@ -423,6 +455,8 @@ const keyboardMapGroups: KeyboardMapGroup[] = [
       { key: '1', code: 'Digit1', action: '普通挡 N' },
       { key: '2', code: 'Digit2', action: '运动挡 S' },
       { key: '3', code: 'Digit3', action: '平稳挡 C' },
+      { key: '4', code: 'Digit4', action: 'GPS 模式' },
+      { key: '5', code: 'Digit5', action: '姿态模式' },
       { key: 'M', code: 'KeyM', action: '地图 / 相机视图切换' },
       { key: 'P', code: 'KeyP', action: '避障开关' },
       { key: 'G', code: 'KeyG', action: '补光灯开关' },
@@ -432,11 +466,16 @@ const keyboardMapGroups: KeyboardMapGroup[] = [
   },
 ]
 
-const links = [
+const links = computed(() => [
   { label: '图传链路', value: '18 Mbps', text: '良好', level: 'good' },
   { label: '控制链路', value: '42 ms', text: '稳定', level: 'good' },
-  { label: '机场链路', value: '在线', text: '可用', level: 'good' },
-]
+  {
+    label: controlMode.value === 'GPS' ? 'GNSS / RTK' : 'GNSS / RTK',
+    value: controlMode.value === 'GPS' ? '固定' : '姿态',
+    text: controlMode.value === 'GPS' ? '定位保持' : '降级',
+    level: controlMode.value === 'GPS' ? 'good' : 'warn',
+  },
+])
 
 const flightModes = ['指令', '航点', '环绕', '跟随']
 
@@ -481,6 +520,17 @@ function logKeyboardAction (text: string) {
     text,
   })
   commandLog.value = commandLog.value.slice(0, 4)
+}
+
+function setControlMode (mode: ControlMode) {
+  if (controlMode.value === mode) return
+  controlMode.value = mode
+  if (mode === 'GPS') {
+    driftState.x *= 0.35
+    driftState.y *= 0.35
+    flightState.speed = clamp(flightState.speed * 0.72, 0, 18)
+  }
+  logKeyboardAction(mode === 'GPS' ? '飞控模式切换：GPS 定位保持' : '飞控模式切换：姿态模式，GPS 保持关闭')
 }
 
 function keyActionText (code: string) {
@@ -561,6 +611,12 @@ function applyMomentaryControl (code: string) {
     activeMode.value = code === 'Digit2' ? '运动' : code === 'Digit3' ? '平稳' : '指令'
     logKeyboardAction(`飞行挡位切换：${safetyState.mode}`)
   }
+  if (code === 'Digit4') {
+    setControlMode('GPS')
+  }
+  if (code === 'Digit5') {
+    setControlMode('ATTI')
+  }
   if (code === 'KeyM') {
     safetyState.mapView = !safetyState.mapView
     logKeyboardAction(safetyState.mapView ? '切换到地图鸟瞰主视角' : '切换到相机座舱主视角')
@@ -614,22 +670,33 @@ function updateSimulation () {
   const hover = isPressed('Space')
   const gimbalTilt = (isPressed('KeyK') ? 1 : 0) - (isPressed('KeyI') ? 1 : 0)
   const gimbalPan = (isPressed('KeyL') ? 1 : 0) - (isPressed('KeyJ') ? 1 : 0)
+  const isGpsMode = controlMode.value === 'GPS'
 
   flightState.throttle = throttle
   flightState.yaw = yaw
   const speedLimit = safetyState.mode === 'S' ? 24 : safetyState.mode === 'C' ? 10 : 18
-  flightState.speed = clamp(flightState.speed + throttle * 0.22 - (hover ? 0.42 : 0), 0, speedLimit)
+  const passiveBrake = isGpsMode && throttle === 0 ? 0.1 : 0.025
+  const hoverBrake = hover ? (isGpsMode ? 0.62 : 0.28) : 0
+  flightState.speed = clamp(flightState.speed + throttle * 0.22 - passiveBrake - hoverBrake, 0, speedLimit)
   flightState.altitude = clamp(flightState.altitude + lift * 0.85, 20, 300)
-  flightState.heading = normalizeHeading(flightState.heading + yaw * (safetyState.mode === 'C' ? 1.1 : 1.9))
+  flightState.heading = normalizeHeading(flightState.heading + yaw * (safetyState.mode === 'C' ? 1.1 : 1.9) * (isGpsMode ? 0.9 : 1.16))
   flightState.battery = clamp(flightState.battery - Math.max(flightState.speed, 1) * 0.0009, 0, 100)
   gimbalState.tilt = clamp(gimbalState.tilt + gimbalTilt * 1.4, -90, 30)
   gimbalState.pan = clamp(gimbalState.pan + gimbalPan * 1.6, -90, 90)
 
   const headingRad = flightState.heading * Math.PI / 180
-  flightState.x = clamp(flightState.x + Math.sin(headingRad) * flightState.speed * 0.06 + strafe * 1.2, -95, 95)
-  flightState.y = clamp(flightState.y - Math.cos(headingRad) * flightState.speed * 0.06 - lift * 0.25, -72, 72)
-  roll.value = yaw * -16 + strafe * 5
-  pitch.value = clamp(throttle * -15 + lift * -4, -18, 18)
+  if (isGpsMode) {
+    driftState.x *= 0.82
+    driftState.y *= 0.82
+  } else {
+    driftState.x = clamp(driftState.x + flightState.wind * 0.018 + strafe * 0.18 - yaw * 0.04, -28, 28)
+    driftState.y = clamp(driftState.y + flightState.wind * 0.01 + throttle * 0.08, -22, 22)
+  }
+  const strafeGain = isGpsMode ? 1.2 : 1.42
+  flightState.x = clamp(flightState.x + Math.sin(headingRad) * flightState.speed * 0.06 + strafe * strafeGain + driftState.x * 0.035, -95, 95)
+  flightState.y = clamp(flightState.y - Math.cos(headingRad) * flightState.speed * 0.06 - lift * 0.25 + driftState.y * 0.03, -72, 72)
+  roll.value = yaw * -16 + strafe * (isGpsMode ? 5 : 9) + (isGpsMode ? 0 : driftState.x * 0.14)
+  pitch.value = clamp(throttle * -15 + lift * -4 + (isGpsMode ? 0 : driftState.y * 0.12), -18, 18)
 }
 
 function issueCommand (label: string) {
@@ -864,6 +931,11 @@ button {
 .signal-stack .good {
   color: #79ffa2;
   background: rgba(37, 196, 110, 0.18);
+}
+
+.signal-stack .warn {
+  color: #ffd66b;
+  background: rgba(255, 171, 64, 0.18);
 }
 
 .hud-stage {
@@ -1416,6 +1488,53 @@ button {
 
 .mode-switch button {
   height: 34px;
+}
+
+.control-mode-panel {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(76, 221, 255, 0.16);
+  background: rgba(0, 22, 43, 0.42);
+}
+
+.control-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.control-mode-switch button {
+  min-height: 58px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  border: 1px solid rgba(76, 221, 255, 0.18);
+  background: rgba(3, 26, 48, 0.55);
+  color: rgba(223, 250, 255, 0.72);
+}
+
+.control-mode-switch button.active {
+  border-color: rgba(114, 242, 255, 0.76);
+  background: linear-gradient(180deg, rgba(0, 174, 255, 0.48), rgba(0, 66, 122, 0.64));
+  box-shadow: inset 0 0 18px rgba(98, 230, 255, 0.16), 0 0 16px rgba(98, 230, 255, 0.16);
+}
+
+.control-mode-switch strong {
+  color: #fff;
+  font-family: Consolas, monospace;
+  font-size: 18px;
+}
+
+.control-mode-switch span,
+.control-mode-panel p {
+  margin: 0;
+  color: rgba(223, 250, 255, 0.68);
+  font-size: 12px;
+}
+
+.control-mode-panel p {
+  margin-top: 10px;
+  line-height: 1.5;
 }
 
 .mode-switch button.active,
