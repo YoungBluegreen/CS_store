@@ -161,9 +161,6 @@
             <strong>云台 / 相机</strong>
             <span>{{ cameraState.recording ? 'REC' : cameraState.mode }}</span>
           </div>
-          <div class="gimbal-preview">
-            <div class="gimbal-reticle" :style="gimbalReticleStyle"></div>
-          </div>
           <div class="camera-stats">
             <div>
               <span>俯仰</span>
@@ -361,10 +358,6 @@ const attitudeBallStyle = computed(() => ({
 
 const mapDroneStyle = computed(() => ({
   transform: `translate(${(flightState.x * 0.54).toFixed(1)}px, ${(flightState.y * 0.42).toFixed(1)}px) rotate(${flightState.heading.toFixed(1)}deg)`,
-}))
-
-const gimbalReticleStyle = computed(() => ({
-  transform: `translate(${(gimbalState.pan * 0.55).toFixed(1)}px, ${(gimbalState.tilt * 0.45).toFixed(1)}px)`,
 }))
 
 const keyboardMapGroups: KeyboardMapGroup[] = [
@@ -1438,62 +1431,17 @@ button {
 }
 
 .gimbal-console {
-  margin-top: 14px;
+  margin-top: 10px;
   padding: 12px;
   border: 1px solid rgba(76, 221, 255, 0.16);
   background: rgba(0, 22, 43, 0.42);
-}
-
-.gimbal-preview {
-  position: relative;
-  height: 112px;
-  overflow: hidden;
-  border: 1px solid rgba(98, 230, 255, 0.22);
-  background:
-    linear-gradient(rgba(98, 230, 255, 0.14) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(98, 230, 255, 0.14) 1px, transparent 1px),
-    rgba(3, 26, 48, 0.72);
-  background-size: 28px 28px;
-}
-
-.gimbal-preview::before,
-.gimbal-preview::after {
-  content: "";
-  position: absolute;
-  background: rgba(223, 250, 255, 0.34);
-}
-
-.gimbal-preview::before {
-  left: 50%;
-  top: 0;
-  width: 1px;
-  height: 100%;
-}
-
-.gimbal-preview::after {
-  left: 0;
-  top: 50%;
-  width: 100%;
-  height: 1px;
-}
-
-.gimbal-reticle {
-  position: absolute;
-  left: calc(50% - 16px);
-  top: calc(50% - 16px);
-  width: 32px;
-  height: 32px;
-  border: 2px solid #72f2ff;
-  border-radius: 50%;
-  box-shadow: 0 0 16px rgba(114, 242, 255, 0.7);
-  transition: transform 0.08s linear;
 }
 
 .camera-stats {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 0;
 }
 
 .camera-stats div {
