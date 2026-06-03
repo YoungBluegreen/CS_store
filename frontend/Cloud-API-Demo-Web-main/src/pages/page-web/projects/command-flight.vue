@@ -124,7 +124,7 @@
               <span>俯仰 {{ Math.round(gimbalState.tilt) }}°</span>
             </div>
           </div>
-          <div class="pitch-ladder">
+          <div v-if="primaryView === 'fpv'" class="pitch-ladder">
             <span>+20</span>
             <span>+10</span>
             <strong>0</strong>
@@ -1663,10 +1663,6 @@ button {
   transform: translate(-50%, -50%);
   color: rgba(223, 250, 255, 0.78);
   text-align: center;
-}
-
-.sky-field.map-expanded .pitch-ladder {
-  display: none;
 }
 
 .pitch-ladder span,
