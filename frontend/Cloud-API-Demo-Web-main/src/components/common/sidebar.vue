@@ -60,6 +60,7 @@ export default defineComponent({
       { key: 4, label: '航线库', path: '/' + ERouterName.WAYLINE, icon: 'NodeIndexOutlined' },
       { key: 5, label: '任务计划', path: '/' + ERouterName.TASK, icon: 'CalendarOutlined' },
       { key: 6, label: '飞行区域', path: '/' + ERouterName.FLIGHT_AREA, icon: 'GroupOutlined' },
+      { key: 7, label: '指令飞行', path: '/' + ERouterName.COMMAND_FLIGHT, icon: 'ControlOutlined' },
     ]
 
     function selectedRoute (item: IOptions) {

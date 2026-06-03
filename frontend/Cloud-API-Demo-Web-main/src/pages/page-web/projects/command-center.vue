@@ -13,7 +13,7 @@
           v-for="module in modules"
           :key="module.key"
           :class="{ active: activeModule === module.key }"
-          @click="activeModule = module.key"
+          @click="selectModule(module.key)"
         >
           {{ module.label }}
         </button>
@@ -240,7 +240,7 @@ import AMapLoader from '@amap/amap-jsapi-loader'
 import { AMapConfig } from '/@/constants'
 
 type ResourceTab = 'devices' | 'routes' | 'layers'
-type ModuleKey = 'project' | 'map' | 'annotation' | 'team' | 'media'
+type ModuleKey = 'project' | 'map' | 'annotation' | 'team' | 'media' | 'command'
 type WorkMode = 'overview' | 'planning' | 'live'
 
 interface WorkbenchObject {
@@ -272,6 +272,7 @@ const modules = [
   { key: 'annotation' as const, label: '标注' },
   { key: 'team' as const, label: '团队' },
   { key: 'media' as const, label: '媒体' },
+  { key: 'command' as const, label: '指令飞行' },
 ]
 
 const resourceTabs = [
@@ -471,6 +472,13 @@ function updateClock () {
 
 function openRoute (path: string) {
   router.push(path)
+}
+
+function selectModule (module: ModuleKey) {
+  activeModule.value = module
+  if (module === 'command') {
+    openRoute('/command-flight')
+  }
 }
 
 function openDetailRoute () {

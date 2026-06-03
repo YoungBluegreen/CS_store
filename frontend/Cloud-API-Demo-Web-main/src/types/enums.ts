@@ -18,6 +18,7 @@ export enum ERouterName {
     FIRMWARES = 'firmwares',
     FLIGHT_AREA = 'flight-area',
     AI_DETECT = 'ai-detect',
+    COMMAND_FLIGHT = 'command-flight',
 
     PILOT = 'pilot-login',
     PILOT_HOME = 'pilot-home',

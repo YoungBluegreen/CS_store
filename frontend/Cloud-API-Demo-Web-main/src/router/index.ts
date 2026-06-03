@@ -51,6 +51,11 @@ const routes: Array<RouteRecordRaw> = [
         path: '/' + ERouterName.AI_DETECT,
         name: ERouterName.AI_DETECT,
         component: () => import('/@/pages/page-web/projects/command-center.vue')
+      },
+      {
+        path: '/' + ERouterName.COMMAND_FLIGHT,
+        name: ERouterName.COMMAND_FLIGHT,
+        component: () => import('/@/pages/page-web/projects/command-flight.vue')
       }
     ]
   },
