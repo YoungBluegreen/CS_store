@@ -94,6 +94,16 @@
             <strong>{{ manualControl ? '键盘飞行模拟' : '第一人称视角监视' }}</strong>
             <span>{{ manualControl ? 'W/S 加减速 · A/D 转向 · ↑↓ 升降 · ←→ 平移 · Space 悬停 · R 返航' : '当前仅监看 FPV 画面，云台/相机可用；点击人工接管后开启飞行操纵' }}</span>
           </div>
+          <div class="gimbal-sight-preview gimbal-sight-hud glass-panel">
+            <div class="gimbal-sight-title">云台姿态准星 · 镜头视角</div>
+            <div class="gimbal-sight-base">
+              <div class="gimbal-sight-dot" :style="gimbalSightStyle"></div>
+            </div>
+            <div class="gimbal-sight-labels">
+              <span>偏航 {{ Math.round(gimbalState.pan) }}°</span>
+              <span>俯仰 {{ Math.round(gimbalState.tilt) }}°</span>
+            </div>
+          </div>
           <div class="pitch-ladder">
             <span>+20</span>
             <span>+10</span>
@@ -171,16 +181,6 @@
             <component :is="command.icon" />
             <span>{{ command.label }}</span>
           </button>
-        </div>
-        <div class="gimbal-sight-preview">
-          <div class="gimbal-sight-title">云台姿态准星 · 镜头视角</div>
-          <div class="gimbal-sight-base">
-            <div class="gimbal-sight-dot" :style="gimbalSightStyle"></div>
-          </div>
-          <div class="gimbal-sight-labels">
-            <span>偏航 {{ Math.round(gimbalState.pan) }}°</span>
-            <span>俯仰 {{ Math.round(gimbalState.tilt) }}°</span>
-          </div>
         </div>
         <div class="gimbal-console">
           <div class="keyboard-title">
@@ -1705,6 +1705,18 @@ button {
   background: rgba(0, 22, 43, 0.42);
 }
 
+.gimbal-sight-hud {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  z-index: 7;
+  width: 236px;
+  margin-top: 0;
+  border-color: rgba(98, 230, 255, 0.42);
+  background: linear-gradient(180deg, rgba(4, 31, 58, 0.86), rgba(1, 15, 32, 0.8));
+  box-shadow: inset 0 0 28px rgba(98, 230, 255, 0.12), 0 0 24px rgba(0, 18, 32, 0.52);
+}
+
 .gimbal-sight-title {
   margin-bottom: 10px;
   color: rgba(223, 250, 255, 0.76);
@@ -1743,6 +1755,22 @@ button {
   margin-top: 12px;
   color: rgba(223, 250, 255, 0.72);
   font-size: 12px;
+}
+
+.gimbal-sight-hud .gimbal-sight-title,
+.gimbal-sight-hud .gimbal-sight-labels {
+  color: #dffaff;
+}
+
+.gimbal-sight-hud .gimbal-sight-base {
+  width: 144px;
+  height: 144px;
+}
+
+.gimbal-sight-hud .gimbal-sight-dot {
+  top: 62px;
+  left: 62px;
+  box-shadow: 0 0 22px #62e6ff, 0 0 36px rgba(98, 230, 255, 0.36);
 }
 
 .keyboard-console {
