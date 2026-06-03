@@ -1,5 +1,5 @@
 <template>
-  <main class="flight-workbench">
+  <main class="flight-workbench" :class="{ 'day-mode': themeMode === 'day' }">
     <div ref="amapContainer" class="map-canvas"></div>
     <div class="map-overlay"></div>
 
@@ -26,6 +26,9 @@
         <strong>{{ currentTime }}</strong>
         <span>{{ currentDate }}</span>
       </div>
+      <button class="theme-toggle" @click="toggleTheme">
+        {{ themeMode === 'day' ? '夜间' : '昼间' }}
+      </button>
       <button class="primary-action" @click="openRoute('/task/create-plan')">新建任务</button>
     </header>
 
@@ -261,6 +264,7 @@ const activeModule = ref<ModuleKey>('project')
 const activeResourceTab = ref<ResourceTab>('devices')
 const activeWorkMode = ref<WorkMode>('overview')
 const selectedTool = ref('图层')
+const themeMode = ref<'night' | 'day'>('night')
 
 const modules = [
   { key: 'project' as const, label: '项目' },
@@ -485,6 +489,17 @@ function selectTool (tool: string) {
   if (tool === '测距') map.setZoom(14)
 }
 
+function applyThemeToMap () {
+  const map = mapInstance.value
+  if (!map) return
+  map.setMapStyle(themeMode.value === 'day' ? 'amap://styles/normal' : 'amap://styles/darkblue')
+}
+
+function toggleTheme () {
+  themeMode.value = themeMode.value === 'day' ? 'night' : 'day'
+  applyThemeToMap()
+}
+
 function createMarker (AMap: any, item: { id: string, name: string, position: number[], type: string }) {
   const marker = new AMap.Marker({
     position: item.position,
@@ -546,7 +561,7 @@ async function initAmap () {
       zoom: 12,
       resizeEnable: true,
       viewMode: '2D',
-      mapStyle: 'amap://styles/darkblue',
+      mapStyle: themeMode.value === 'day' ? 'amap://styles/normal' : 'amap://styles/darkblue',
       layers: [
         new AMap.TileLayer.Satellite(),
         new AMap.TileLayer.RoadNet(),
@@ -583,8 +598,39 @@ onBeforeUnmount(() => {
   inset: 0;
   z-index: 100;
   overflow: hidden;
+  --workbench-text: #d9f4ff;
+  --workbench-title: #fff;
+  --workbench-muted: #9ddff5;
+  --workbench-panel: rgba(3, 24, 48, 0.72);
+  --workbench-panel-strong: rgba(2, 22, 44, 0.84);
+  --workbench-panel-soft: rgba(0, 20, 38, 0.5);
+  --workbench-border: rgba(0, 216, 255, 0.2);
+  --workbench-border-strong: rgba(0, 216, 255, 0.34);
+  --workbench-button: rgba(4, 42, 76, 0.58);
+  --workbench-button-active: rgba(0, 142, 220, 0.58);
+  --workbench-map-overlay: linear-gradient(90deg, rgba(2, 14, 28, 0.76), rgba(2, 14, 28, 0.08) 24%, rgba(2, 14, 28, 0.08) 76%, rgba(2, 14, 28, 0.76)),
+    linear-gradient(180deg, rgba(0, 50, 95, 0.36), transparent 30%, rgba(0, 18, 38, 0.5)),
+    repeating-linear-gradient(90deg, rgba(0, 216, 255, 0.035) 0 1px, transparent 1px 72px);
   color: #d9f4ff;
   background: #021428;
+}
+
+.flight-workbench.day-mode {
+  --workbench-text: #17324a;
+  --workbench-title: #071b2d;
+  --workbench-muted: #4a6980;
+  --workbench-panel: rgba(255, 255, 255, 0.82);
+  --workbench-panel-strong: rgba(247, 252, 255, 0.9);
+  --workbench-panel-soft: rgba(235, 247, 255, 0.72);
+  --workbench-border: rgba(0, 125, 190, 0.24);
+  --workbench-border-strong: rgba(0, 125, 190, 0.36);
+  --workbench-button: rgba(235, 247, 255, 0.88);
+  --workbench-button-active: rgba(0, 130, 210, 0.18);
+  --workbench-map-overlay: linear-gradient(90deg, rgba(240, 248, 255, 0.76), rgba(240, 248, 255, 0.08) 22%, rgba(240, 248, 255, 0.08) 78%, rgba(240, 248, 255, 0.76)),
+    linear-gradient(180deg, rgba(239, 249, 255, 0.58), transparent 34%, rgba(235, 247, 255, 0.62)),
+    repeating-linear-gradient(90deg, rgba(0, 125, 190, 0.05) 0 1px, transparent 1px 72px);
+  color: var(--workbench-text);
+  background: #edf7ff;
 }
 
 .map-canvas,
@@ -601,10 +647,7 @@ onBeforeUnmount(() => {
 .map-overlay {
   z-index: 1;
   pointer-events: none;
-  background:
-    linear-gradient(90deg, rgba(2, 14, 28, 0.76), rgba(2, 14, 28, 0.08) 24%, rgba(2, 14, 28, 0.08) 76%, rgba(2, 14, 28, 0.76)),
-    linear-gradient(180deg, rgba(0, 50, 95, 0.36), transparent 30%, rgba(0, 18, 38, 0.5)),
-    repeating-linear-gradient(90deg, rgba(0, 216, 255, 0.035) 0 1px, transparent 1px 72px);
+  background: var(--workbench-map-overlay);
 }
 
 .workbench-topbar,
@@ -625,12 +668,12 @@ onBeforeUnmount(() => {
   right: 0;
   height: 64px;
   display: grid;
-  grid-template-columns: 310px 430px minmax(280px, 1fr) 150px 104px;
+  grid-template-columns: 300px 400px minmax(260px, 1fr) 150px 78px 104px;
   align-items: center;
   gap: 14px;
   padding: 0 22px;
-  border-bottom: 1px solid rgba(0, 216, 255, 0.34);
-  background: rgba(2, 22, 44, 0.84);
+  border-bottom: 1px solid var(--workbench-border-strong);
+  background: var(--workbench-panel-strong);
   box-shadow: 0 14px 38px rgba(0, 20, 44, 0.42);
   backdrop-filter: blur(12px);
 }
@@ -648,14 +691,14 @@ onBeforeUnmount(() => {
 }
 
 .project-title strong {
-  color: #fff;
+  color: var(--workbench-title);
   font-size: 18px;
 }
 
 .project-title span,
 .top-stat span {
   margin-top: 4px;
-  color: #9ddff5;
+  color: var(--workbench-muted);
   font-size: 12px;
 }
 
@@ -675,13 +718,14 @@ button {
 .mission-ribbon button,
 .layer-toolbar button,
 .primary-action,
+.theme-toggle,
 .block-head button,
 .action-grid button,
 .global-search button {
-  border: 1px solid rgba(0, 216, 255, 0.22);
+  border: 1px solid var(--workbench-border);
   border-radius: 4px;
-  color: #bdefff;
-  background: rgba(4, 42, 76, 0.58);
+  color: var(--workbench-text);
+  background: var(--workbench-button);
   cursor: pointer;
 }
 
@@ -696,7 +740,7 @@ button {
 .layer-toolbar button.active {
   color: #fff;
   border-color: #00d8ff;
-  background: rgba(0, 142, 220, 0.58);
+  background: var(--workbench-button-active);
   box-shadow: inset 0 -2px 0 #00d8ff, 0 0 14px rgba(0, 216, 255, 0.22);
 }
 
@@ -704,7 +748,7 @@ button {
   height: 38px;
   display: grid;
   grid-template-columns: 1fr 56px;
-  border: 1px solid rgba(0, 216, 255, 0.28);
+  border: 1px solid var(--workbench-border);
   border-radius: 4px;
   background: rgba(2, 34, 62, 0.66);
 }
@@ -714,7 +758,7 @@ button {
   padding: 0 14px;
   border: 0;
   outline: 0;
-  color: #d9f4ff;
+  color: var(--workbench-text);
   background: transparent;
 }
 
@@ -739,6 +783,10 @@ button {
   height: 38px;
   color: #fff;
   background: linear-gradient(180deg, rgba(0, 180, 255, 0.86), rgba(0, 94, 166, 0.72));
+}
+
+.theme-toggle {
+  height: 38px;
 }
 
 .resource-panel,
@@ -768,7 +816,8 @@ button {
 .layer-toolbar,
 .mission-ribbon {
   border: 1px solid rgba(0, 216, 255, 0.2);
-  background: rgba(3, 24, 48, 0.72);
+  border-color: var(--workbench-border);
+  background: var(--workbench-panel);
   box-shadow: inset 0 0 24px rgba(0, 170, 255, 0.08), 0 14px 38px rgba(0, 18, 38, 0.34);
   backdrop-filter: blur(10px);
 }
@@ -786,7 +835,7 @@ button {
 .block-head strong,
 .resource-list strong,
 .timeline-head strong {
-  color: #fff;
+  color: var(--workbench-title);
 }
 
 .project-card span,
@@ -797,7 +846,7 @@ button {
 .timeline-items small,
 .param-list span,
 .media-grid span {
-  color: #9ddff5;
+  color: var(--workbench-muted);
 }
 
 .project-card em {
@@ -857,8 +906,8 @@ button {
   display: grid;
   align-items: center;
   gap: 10px;
-  border: 1px solid rgba(0, 216, 255, 0.13);
-  background: rgba(0, 20, 38, 0.5);
+  border: 1px solid var(--workbench-border);
+  background: var(--workbench-panel-soft);
 }
 
 .resource-list article {
@@ -1028,7 +1077,7 @@ button {
 
 .object-meta strong,
 .param-list strong {
-  color: #fff;
+  color: var(--workbench-title);
 }
 
 .action-grid {
@@ -1149,7 +1198,7 @@ button {
 
 @media (max-width: 1360px) {
   .workbench-topbar {
-    grid-template-columns: 260px 330px minmax(220px, 1fr) 130px 94px;
+    grid-template-columns: 250px 300px minmax(200px, 1fr) 130px 74px 94px;
     gap: 10px;
     padding: 0 14px;
   }
