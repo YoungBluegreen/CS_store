@@ -39,12 +39,62 @@
       </aside>
 
       <section class="hud-stage">
-        <div class="sky-field">
-          <div class="horizon" :style="horizonStyle">
-            <div class="sky"></div>
-            <div class="ground"></div>
+        <div class="sky-field" :class="{ 'map-expanded': primaryView === 'map' }">
+          <div class="fpv-view" :class="{ 'is-mini glass-panel': primaryView === 'map' }">
+            <div class="horizon" :style="horizonStyle">
+              <div class="sky"></div>
+              <div class="ground"></div>
+            </div>
+            <div class="hud-grid"></div>
+            <div class="sim-world" :style="simWorldStyle">
+              <div class="runway"></div>
+              <div class="terrain-line line-a"></div>
+              <div class="terrain-line line-b"></div>
+              <div class="waypoint waypoint-a">A</div>
+              <div class="waypoint waypoint-b">B</div>
+              <div class="target-box">
+                <span></span>
+                <strong>目标巡检点</strong>
+              </div>
+            </div>
+            <div class="drone-avatar" :style="droneStyle">
+              <span></span>
+            </div>
+            <div class="flight-vector" :style="flightVectorStyle">
+              <span></span>
+            </div>
+            <button
+              v-if="primaryView === 'map'"
+              type="button"
+              class="view-expand-button"
+              aria-label="放大第一视角"
+              @click="setPrimaryView('fpv')"
+            >
+              <ArrowsAltOutlined />
+            </button>
           </div>
-          <div class="hud-grid"></div>
+          <div class="map-view glass-panel" :class="{ 'is-main': primaryView === 'map', 'is-mini': primaryView === 'fpv' }">
+            <div class="overview-head">
+              <strong>鸟瞰图</strong>
+              <span>MAP</span>
+            </div>
+            <div class="overview-body">
+              <div class="map-grid"></div>
+              <div class="map-route"></div>
+              <div class="map-home">H</div>
+              <div class="map-target">T</div>
+              <div class="map-drone" :style="mapDroneStyle"></div>
+              <button
+                v-if="primaryView === 'fpv'"
+                type="button"
+                class="view-expand-button"
+                aria-label="放大鸟瞰图"
+                @click="setPrimaryView('map')"
+              >
+                <ArrowsAltOutlined />
+              </button>
+            </div>
+          </div>
           <div class="attitude-orb glass-panel">
             <div class="orb-title">球形水平仪</div>
             <div class="orb-body">
@@ -59,36 +109,6 @@
               <span>ROLL {{ Math.round(roll) }}°</span>
               <span>PITCH {{ Math.round(-pitch) }}°</span>
             </div>
-          </div>
-          <div class="overview-map glass-panel">
-            <div class="overview-head">
-              <strong>鸟瞰图</strong>
-              <span>MAP</span>
-            </div>
-            <div class="overview-body">
-              <div class="map-grid"></div>
-              <div class="map-route"></div>
-              <div class="map-home">H</div>
-              <div class="map-target">T</div>
-              <div class="map-drone" :style="mapDroneStyle"></div>
-            </div>
-          </div>
-          <div class="sim-world" :style="simWorldStyle">
-            <div class="runway"></div>
-            <div class="terrain-line line-a"></div>
-            <div class="terrain-line line-b"></div>
-            <div class="waypoint waypoint-a">A</div>
-            <div class="waypoint waypoint-b">B</div>
-            <div class="target-box">
-              <span></span>
-              <strong>目标巡检点</strong>
-            </div>
-          </div>
-          <div class="drone-avatar" :style="droneStyle">
-            <span></span>
-          </div>
-          <div class="flight-vector" :style="flightVectorStyle">
-            <span></span>
           </div>
           <div class="sim-readout glass-panel">
             <strong>{{ manualControl ? '键盘飞行模拟' : '第一人称视角监视' }}</strong>
@@ -263,6 +283,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ArrowLeftOutlined,
+  ArrowsAltOutlined,
   AimOutlined,
   PauseCircleOutlined,
   RocketOutlined,
@@ -313,11 +334,13 @@ interface KeyboardMapGroup {
 }
 
 type ControlMode = 'GPS' | 'ATTI'
+type PrimaryView = 'fpv' | 'map'
 
 const router = useRouter()
 const activeMode = ref('指令')
 const controlMode = ref<ControlMode>('GPS')
 const manualControl = ref(false)
+const primaryView = ref<PrimaryView>('fpv')
 const currentTime = ref('')
 const clockTimer = ref<number | null>(null)
 const simTimer = ref<number | null>(null)
@@ -585,6 +608,12 @@ function setControlMode (mode: ControlMode) {
     flightState.speed = clamp(flightState.speed * 0.72, 0, 18)
   }
   logKeyboardAction(mode === 'GPS' ? '飞控模式切换：GPS 定位保持' : '飞控模式切换：姿态模式，GPS 保持关闭')
+}
+
+function setPrimaryView (view: PrimaryView) {
+  if (primaryView.value === view) return
+  primaryView.value = view
+  safetyState.mapView = view === 'map'
 }
 
 function keyActionText (code: string) {
@@ -1023,6 +1052,45 @@ button {
   box-shadow: inset 0 0 80px rgba(0, 210, 255, 0.12);
 }
 
+.fpv-view,
+.map-view {
+  position: absolute;
+  overflow: hidden;
+  transition: inset 0.22s ease, width 0.22s ease, height 0.22s ease, padding 0.22s ease, opacity 0.18s ease;
+}
+
+.fpv-view {
+  inset: 0;
+  z-index: 1;
+  background: #07192e;
+}
+
+.fpv-view.is-mini {
+  inset: 14px 14px auto auto;
+  z-index: 8;
+  width: 176px;
+  height: 166px;
+  padding: 10px;
+  border-color: rgba(76, 221, 255, 0.28);
+  background: rgba(4, 24, 45, 0.82);
+  box-shadow: 0 16px 34px rgba(0, 8, 20, 0.38), inset 0 0 22px rgba(98, 230, 255, 0.08);
+}
+
+.fpv-view.is-mini .horizon {
+  inset: -52%;
+}
+
+.fpv-view.is-mini .hud-grid {
+  background-size: 24px 24px;
+  mask-image: none;
+  opacity: 0.62;
+}
+
+.fpv-view.is-mini .sim-world {
+  inset: -30%;
+  opacity: 0.82;
+}
+
 .horizon {
   position: absolute;
   inset: -34%;
@@ -1053,8 +1121,7 @@ button {
   mask-image: radial-gradient(circle at center, #000 0 55%, transparent 78%);
 }
 
-.attitude-orb,
-.overview-map {
+.attitude-orb {
   position: absolute;
   top: 14px;
   z-index: 5;
@@ -1162,10 +1229,25 @@ button {
   font-size: 11px;
 }
 
-.overview-map {
+.map-view {
+  top: 14px;
   right: 14px;
+  z-index: 8;
   width: 176px;
   padding: 10px;
+}
+
+.map-view.is-main {
+  inset: 0;
+  z-index: 1;
+  width: auto;
+  padding: 0;
+  border-color: transparent;
+  background:
+    radial-gradient(circle at 58% 42%, rgba(98, 230, 255, 0.18), transparent 36%),
+    linear-gradient(135deg, rgba(6, 43, 70, 0.96), rgba(5, 24, 43, 0.96));
+  box-shadow: inset 0 0 96px rgba(0, 210, 255, 0.12);
+  backdrop-filter: none;
 }
 
 .overview-head {
@@ -1179,6 +1261,18 @@ button {
   color: #fff;
 }
 
+.map-view.is-main .overview-head {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  z-index: 2;
+  width: 176px;
+  padding: 8px 10px;
+  margin-bottom: 0;
+  border: 1px solid rgba(98, 230, 255, 0.18);
+  background: rgba(4, 24, 45, 0.46);
+}
+
 .overview-body {
   position: relative;
   height: 124px;
@@ -1189,6 +1283,16 @@ button {
     rgba(3, 26, 48, 0.66);
 }
 
+.map-view.is-main .overview-body {
+  position: absolute;
+  inset: 0;
+  height: auto;
+  border: 0;
+  background:
+    radial-gradient(circle at 55% 48%, rgba(114, 242, 255, 0.18), transparent 26%),
+    linear-gradient(180deg, rgba(6, 68, 96, 0.6), rgba(4, 25, 43, 0.82));
+}
+
 .map-grid {
   position: absolute;
   inset: 0;
@@ -1196,6 +1300,13 @@ button {
     linear-gradient(rgba(98, 230, 255, 0.12) 1px, transparent 1px),
     linear-gradient(90deg, rgba(98, 230, 255, 0.12) 1px, transparent 1px);
   background-size: 24px 24px;
+}
+
+.map-view.is-main .map-grid {
+  background:
+    linear-gradient(rgba(98, 230, 255, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(98, 230, 255, 0.15) 1px, transparent 1px);
+  background-size: 72px 72px;
 }
 
 .map-route {
@@ -1208,6 +1319,15 @@ button {
   transform: rotate(-28deg);
   transform-origin: left;
   box-shadow: 0 0 12px rgba(157, 255, 122, 0.6);
+}
+
+.map-view.is-main .map-route {
+  left: 12%;
+  right: 14%;
+  top: 58%;
+  height: 3px;
+  transform: rotate(-22deg);
+  box-shadow: 0 0 18px rgba(157, 255, 122, 0.72);
 }
 
 .map-home,
@@ -1234,10 +1354,26 @@ button {
   background: #72f2ff;
 }
 
+.map-view.is-main .map-home {
+  left: 14%;
+  bottom: 28%;
+  width: 34px;
+  height: 34px;
+  font-size: 14px;
+}
+
 .map-target {
   right: 24px;
   top: 24px;
   background: #9dff7a;
+}
+
+.map-view.is-main .map-target {
+  right: 17%;
+  top: 30%;
+  width: 34px;
+  height: 34px;
+  font-size: 14px;
 }
 
 .map-drone {
@@ -1250,6 +1386,35 @@ button {
   border-left: 8px solid transparent;
   filter: drop-shadow(0 0 10px rgba(114, 242, 255, 0.82));
   transition: transform 0.08s linear;
+}
+
+.map-view.is-main .map-drone {
+  border-right-width: 12px;
+  border-bottom-width: 24px;
+  border-left-width: 12px;
+  filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.9));
+}
+
+.view-expand-button {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(98, 230, 255, 0.42);
+  border-radius: 4px;
+  color: #dffaff;
+  background: rgba(2, 22, 40, 0.72);
+  box-shadow: 0 0 14px rgba(98, 230, 255, 0.16);
+  cursor: pointer;
+}
+
+.view-expand-button:hover {
+  color: #061220;
+  background: #72f2ff;
 }
 
 .sim-world {
@@ -2056,10 +2221,15 @@ kbd.active {
     padding: 8px;
   }
 
-  .overview-map {
+  .map-view.is-mini,
+  .fpv-view.is-mini {
     right: 8px;
     width: 124px;
     padding: 8px;
+  }
+
+  .fpv-view.is-mini {
+    height: 118px;
   }
 
   .orb-body {
