@@ -6,8 +6,10 @@ import 'virtual:svg-icons-register'
 import store, { storeKey } from './store'
 import { createInstance } from '/@/root'
 import { useDirectives } from './directives'
+import { ensureDemoSession } from '/@/api/mock/demo'
 
 import '/@/styles/index.scss'
+ensureDemoSession()
 const app = createInstance(App)
 
 app.use(store, storeKey)

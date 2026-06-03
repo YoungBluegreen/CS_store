@@ -4,6 +4,7 @@ import { CURRENT_CONFIG } from './config'
 import { message } from 'ant-design-vue'
 import router from '/@/router'
 import { ELocalStorageKey, ERouterName, EUserType } from '/@/types/enums'
+import { DEMO_MODE, demoAdapter } from '/@/api/mock/demo'
 export * from './type'
 
 const REQUEST_ID = 'X-Request-Id'
@@ -24,6 +25,9 @@ instance.interceptors.request.use(
     config.headers[ELocalStorageKey.Token] = getAuthToken()
     // config.headers[REQUEST_ID] = uuidv4()
     config.baseURL = CURRENT_CONFIG.baseURL
+    if (DEMO_MODE) {
+      config.adapter = demoAdapter
+    }
     return config
   },
   error => {
