@@ -11,8 +11,8 @@
           <strong>指令飞行座舱</strong>
         </div>
         <div class="flight-state">
-          <span class="state-dot"></span>
-          <strong>控制权已接入</strong>
+          <span class="state-dot" :class="{ armed: manualControl }"></span>
+          <strong>{{ manualControl ? '人工接管中' : 'FPV 监视中' }}</strong>
           <small>{{ currentTime }}</small>
         </div>
       </header>
@@ -91,8 +91,8 @@
             <span></span>
           </div>
           <div class="sim-readout glass-panel">
-            <strong>键盘飞行模拟</strong>
-            <span>W/S 加减速 · A/D 转向 · ↑↓ 升降 · ←→ 平移 · Space 悬停 · R 返航</span>
+            <strong>{{ manualControl ? '键盘飞行模拟' : '第一人称视角监视' }}</strong>
+            <span>{{ manualControl ? 'W/S 加减速 · A/D 转向 · ↑↓ 升降 · ←→ 平移 · Space 悬停 · R 返航' : '当前仅监看 FPV 画面，云台/相机可用；点击人工接管后开启飞行操纵' }}</span>
           </div>
           <div class="pitch-ladder">
             <span>+20</span>
@@ -126,6 +126,13 @@
           <span>Control</span>
           <strong>指令面板</strong>
         </div>
+        <div class="takeover-panel" :class="{ active: manualControl }">
+          <button class="takeover-button" :class="{ active: manualControl }" @click="toggleManualControl">
+            <strong>{{ manualControl ? '退出人工接管' : '人工接管' }}</strong>
+            <span>{{ manualControl ? '释放键盘飞行控制权' : '开启键盘飞行控制权' }}</span>
+          </button>
+          <p>{{ takeoverHint }}</p>
+        </div>
         <div class="mode-switch">
           <button
             v-for="mode in flightModes"
@@ -153,11 +160,12 @@
           </div>
           <p>{{ controlModeHint }}</p>
         </div>
-        <div class="command-grid">
+        <div class="command-grid" :class="{ locked: !manualControl }">
           <button
             v-for="command in commands"
             :key="command.label"
             :class="command.tone"
+            :disabled="!manualControl"
             @click="issueCommand(command.label)"
           >
             <component :is="command.icon" />
@@ -198,7 +206,7 @@
             </div>
           </div>
         </div>
-        <div class="keyboard-console">
+        <div class="keyboard-console" :class="{ locked: !manualControl }">
           <div class="keyboard-title">
             <strong>键盘操纵</strong>
             <span>{{ activeKeyLabel }}</span>
@@ -309,13 +317,14 @@ type ControlMode = 'GPS' | 'ATTI'
 const router = useRouter()
 const activeMode = ref('指令')
 const controlMode = ref<ControlMode>('GPS')
+const manualControl = ref(false)
 const currentTime = ref('')
 const clockTimer = ref<number | null>(null)
 const simTimer = ref<number | null>(null)
 const roll = ref(-8)
 const pitch = ref(10)
 const logSeed = ref(4)
-const activeKeyLabel = ref('等待键盘输入')
+const activeKeyLabel = ref('监视模式：飞行锁定')
 const pressedKeys = reactive<Record<string, boolean>>({})
 const driftState = reactive({
   x: 0,
@@ -350,7 +359,7 @@ const safetyState = reactive({
   mode: 'N',
 })
 const commandLog = ref([
-  { id: 1, time: '19:08:12', text: '控制权切换至云端座舱' },
+  { id: 1, time: '19:08:12', text: 'FPV 监视链路已建立' },
   { id: 2, time: '19:08:18', text: '加载东区 03 号巡检点' },
   { id: 3, time: '19:08:26', text: '避障、返航、链路状态检查完成' },
 ])
@@ -360,11 +369,17 @@ const telemetry = computed(() => [
   { label: '速度', value: flightState.speed.toFixed(1), unit: 'm/s' },
   { label: '航向', value: `${Math.round(flightState.heading)}`, unit: 'deg' },
   { label: '电量', value: `${Math.round(flightState.battery)}`, unit: '%' },
-  { label: '模式', value: controlMode.value, unit: controlMode.value === 'GPS' ? '定位' : '姿态' },
+  { label: '接管', value: manualControl.value ? 'MAN' : 'FPV', unit: manualControl.value ? '人工' : '监视' },
   { label: '漂移', value: driftMagnitude.value.toFixed(1), unit: 'm' },
 ])
 
 const driftMagnitude = computed(() => Math.hypot(driftState.x, driftState.y))
+
+const takeoverHint = computed(() => (
+  manualControl.value
+    ? '人工飞行已接管，键盘飞行、返航、起降、悬停指令生效。'
+    : '监视模式下保持 FPV 观察，飞行操纵锁定，仅保留云台、相机和模式切换。'
+))
 
 const controlModeHint = computed(() => (
   controlMode.value === 'GPS'
@@ -466,9 +481,27 @@ const keyboardMapGroups: KeyboardMapGroup[] = [
   },
 ]
 
+const manualFlightCodes = new Set([
+  'KeyW',
+  'KeyS',
+  'KeyA',
+  'KeyD',
+  'ArrowUp',
+  'ArrowDown',
+  'ArrowLeft',
+  'ArrowRight',
+  'Space',
+  'KeyR',
+  'KeyT',
+  'Escape',
+  'Digit1',
+  'Digit2',
+  'Digit3',
+])
+
 const links = computed(() => [
   { label: '图传链路', value: '18 Mbps', text: '良好', level: 'good' },
-  { label: '控制链路', value: '42 ms', text: '稳定', level: 'good' },
+  { label: '控制链路', value: manualControl.value ? '42 ms' : '待命', text: manualControl.value ? '接管' : '监视', level: 'good' },
   {
     label: controlMode.value === 'GPS' ? 'GNSS / RTK' : 'GNSS / RTK',
     value: controlMode.value === 'GPS' ? '固定' : '姿态',
@@ -522,6 +555,27 @@ function logKeyboardAction (text: string) {
   commandLog.value = commandLog.value.slice(0, 4)
 }
 
+function toggleManualControl () {
+  manualControl.value = !manualControl.value
+  if (!manualControl.value) {
+    pressedKeys.KeyW = false
+    pressedKeys.KeyS = false
+    pressedKeys.KeyA = false
+    pressedKeys.KeyD = false
+    pressedKeys.ArrowUp = false
+    pressedKeys.ArrowDown = false
+    pressedKeys.ArrowLeft = false
+    pressedKeys.ArrowRight = false
+    pressedKeys.Space = false
+    flightState.throttle = 0
+    flightState.yaw = 0
+    activeKeyLabel.value = '监视模式：飞行锁定'
+  } else {
+    activeKeyLabel.value = '人工接管：等待键盘输入'
+  }
+  logKeyboardAction(manualControl.value ? '人工接管已开启：键盘飞行控制生效' : '已退出人工接管：恢复 FPV 监视')
+}
+
 function setControlMode (mode: ControlMode) {
   if (controlMode.value === mode) return
   controlMode.value = mode
@@ -539,6 +593,11 @@ function keyActionText (code: string) {
 }
 
 function applyMomentaryControl (code: string) {
+  if (!manualControl.value && manualFlightCodes.has(code)) {
+    activeKeyLabel.value = '请先点击人工接管'
+    logKeyboardAction('飞行操纵已锁定：请先人工接管')
+    return
+  }
   if (code === 'KeyR') {
     issueCommand('返航')
     flightState.x = 0
@@ -640,6 +699,11 @@ function applyMomentaryControl (code: string) {
 function handleKeyDown (event: KeyboardEvent) {
   if (!isControlKey(event.code)) return
   event.preventDefault()
+  if (!manualControl.value && manualFlightCodes.has(event.code)) {
+    activeKeyLabel.value = '监视模式：飞行锁定'
+    if (!pressedKeys[event.code]) logKeyboardAction('监视模式下飞行键无效，请点击人工接管')
+    return
+  }
   const wasPressed = pressedKeys[event.code]
   pressedKeys[event.code] = true
 
@@ -659,15 +723,15 @@ function handleKeyUp (event: KeyboardEvent) {
   if (!isControlKey(event.code)) return
   event.preventDefault()
   pressedKeys[event.code] = false
-  activeKeyLabel.value = '等待键盘输入'
+  activeKeyLabel.value = manualControl.value ? '人工接管：等待键盘输入' : '监视模式：飞行锁定'
 }
 
 function updateSimulation () {
-  const throttle = (isPressed('KeyW') ? 1 : 0) - (isPressed('KeyS') ? 1 : 0)
-  const yaw = (isPressed('KeyD') ? 1 : 0) - (isPressed('KeyA') ? 1 : 0)
-  const strafe = (isPressed('ArrowRight') ? 1 : 0) - (isPressed('ArrowLeft') ? 1 : 0)
-  const lift = (isPressed('ArrowUp') ? 1 : 0) - (isPressed('ArrowDown') ? 1 : 0)
-  const hover = isPressed('Space')
+  const throttle = manualControl.value ? (isPressed('KeyW') ? 1 : 0) - (isPressed('KeyS') ? 1 : 0) : 0
+  const yaw = manualControl.value ? (isPressed('KeyD') ? 1 : 0) - (isPressed('KeyA') ? 1 : 0) : 0
+  const strafe = manualControl.value ? (isPressed('ArrowRight') ? 1 : 0) - (isPressed('ArrowLeft') ? 1 : 0) : 0
+  const lift = manualControl.value ? (isPressed('ArrowUp') ? 1 : 0) - (isPressed('ArrowDown') ? 1 : 0) : 0
+  const hover = manualControl.value && isPressed('Space')
   const gimbalTilt = (isPressed('KeyK') ? 1 : 0) - (isPressed('KeyI') ? 1 : 0)
   const gimbalPan = (isPressed('KeyL') ? 1 : 0) - (isPressed('KeyJ') ? 1 : 0)
   const isGpsMode = controlMode.value === 'GPS'
@@ -847,6 +911,11 @@ button {
   border-radius: 50%;
   background: #5dff90;
   box-shadow: 0 0 16px #5dff90;
+}
+
+.state-dot.armed {
+  background: #ffcf5a;
+  box-shadow: 0 0 16px rgba(255, 207, 90, 0.95);
 }
 
 .left-console,
@@ -1490,6 +1559,53 @@ button {
   height: 34px;
 }
 
+.takeover-panel {
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid rgba(76, 221, 255, 0.18);
+  background: rgba(0, 22, 43, 0.46);
+}
+
+.takeover-panel.active {
+  border-color: rgba(255, 207, 90, 0.55);
+  background: rgba(44, 34, 10, 0.48);
+  box-shadow: inset 0 0 22px rgba(255, 207, 90, 0.1), 0 0 18px rgba(255, 207, 90, 0.12);
+}
+
+.takeover-button {
+  width: 100%;
+  min-height: 62px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  border-color: rgba(114, 242, 255, 0.58);
+  background: linear-gradient(180deg, rgba(0, 174, 255, 0.56), rgba(0, 78, 138, 0.58));
+  color: #fff;
+  box-shadow: 0 0 18px rgba(0, 216, 255, 0.2);
+}
+
+.takeover-button.active {
+  border-color: rgba(255, 207, 90, 0.86);
+  background: linear-gradient(180deg, rgba(255, 184, 76, 0.82), rgba(156, 87, 22, 0.72));
+  box-shadow: 0 0 18px rgba(255, 184, 76, 0.26);
+}
+
+.takeover-button strong {
+  font-size: 18px;
+}
+
+.takeover-button span,
+.takeover-panel p {
+  margin: 0;
+  color: rgba(223, 250, 255, 0.72);
+  font-size: 12px;
+}
+
+.takeover-panel p {
+  margin-top: 10px;
+  line-height: 1.5;
+}
+
 .control-mode-panel {
   margin-top: 12px;
   padding: 12px;
@@ -1556,6 +1672,21 @@ button {
   display: grid;
   place-items: center;
   gap: 6px;
+}
+
+.command-grid.locked button {
+  cursor: not-allowed;
+  opacity: 0.46;
+  filter: grayscale(0.35);
+}
+
+.keyboard-console.locked {
+  border-color: rgba(120, 166, 190, 0.16);
+  background: rgba(0, 14, 28, 0.5);
+}
+
+.keyboard-console.locked .key-row kbd {
+  opacity: 0.46;
 }
 
 .command-grid .anticon {
