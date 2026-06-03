@@ -1081,14 +1081,19 @@ button {
 }
 
 .fpv-view.is-mini .hud-grid {
-  background-size: 24px 24px;
-  mask-image: none;
-  opacity: 0.62;
+  display: none;
 }
 
 .fpv-view.is-mini .sim-world {
   inset: -30%;
   opacity: 0.82;
+}
+
+.fpv-view.is-mini .waypoint,
+.fpv-view.is-mini .target-box,
+.fpv-view.is-mini .drone-avatar,
+.fpv-view.is-mini .flight-vector {
+  display: none;
 }
 
 .horizon {
