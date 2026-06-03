@@ -1,177 +1,226 @@
 <template>
-  <main class="command-center">
+  <main class="flight-workbench">
     <div ref="amapContainer" class="map-canvas"></div>
-    <div class="map-tint"></div>
+    <div class="map-overlay"></div>
 
-    <header class="top-command-bar">
-      <div class="brand-block">
-        <strong>飞码无人机管理平台</strong>
-        <span>Feima Drone Management Platform</span>
+    <header class="workbench-topbar">
+      <div class="project-title">
+        <strong>低空巡检项目工作台</strong>
+        <span>类司空 2 的云端无人机协同作业界面</span>
       </div>
-      <div class="clock-block">
+      <nav class="module-tabs">
+        <button
+          v-for="module in modules"
+          :key="module.key"
+          :class="{ active: activeModule === module.key }"
+          @click="activeModule = module.key"
+        >
+          {{ module.label }}
+        </button>
+      </nav>
+      <label class="global-search">
+        <input v-model="keyword" placeholder="搜索设备、航线、标注、媒体..." />
+        <button @click="selectedObject = searchResult">搜索</button>
+      </label>
+      <div class="top-stat">
         <strong>{{ currentTime }}</strong>
         <span>{{ currentDate }}</span>
       </div>
-      <div class="status-chip">系统状态：正常运行</div>
-      <div class="status-chip">在线设备：0</div>
-      <label class="search-box">
-        <input v-model="keyword" placeholder="搜索无人机、任务或区域..." />
-        <button @click="selectedTool = 'search'">搜索</button>
-      </label>
-      <div class="admin-box">
-        <span class="online-dot"></span>
-        <strong>管理员</strong>
-      </div>
+      <button class="primary-action" @click="openRoute('/task/create-plan')">新建任务</button>
     </header>
 
-    <aside class="left-glass-panel">
-      <nav class="panel-tabs">
-        <button
-          v-for="tab in leftTabs"
-          :key="tab.key"
-          :class="{ active: activeLeftTab === tab.key }"
-          @click="activeLeftTab = tab.key"
-        >
-          {{ tab.label }}
-        </button>
-      </nav>
-
-      <section class="panel-section">
-        <div class="section-title">
-          <span></span>
-          <strong>全局态势信息</strong>
+    <aside class="resource-panel">
+      <section class="project-card">
+        <div>
+          <strong>合肥高新区巡检</strong>
+          <span>Workspace · 演示项目</span>
         </div>
-        <div class="mini-map">
-          <div class="mini-road horizontal"></div>
-          <div class="mini-road vertical"></div>
-          <div class="mini-pin">H</div>
-          <em>二维地图信息概要</em>
+        <em>在线</em>
+      </section>
+
+      <section class="panel-block">
+        <div class="block-head">
+          <strong>项目资源</strong>
+          <button @click="openRoute('/workspace')">一张图</button>
+        </div>
+        <div class="resource-switch">
+          <button
+            v-for="tab in resourceTabs"
+            :key="tab.key"
+            :class="{ active: activeResourceTab === tab.key }"
+            @click="activeResourceTab = tab.key"
+          >
+            {{ tab.label }}
+          </button>
+        </div>
+
+        <div v-if="activeResourceTab === 'devices'" class="resource-list">
+          <article
+            v-for="device in devices"
+            :key="device.id"
+            :class="{ active: selectedObject.id === device.id }"
+            @click="selectObject(device)"
+          >
+            <span :class="['resource-dot', device.status]"></span>
+            <div>
+              <strong>{{ device.name }}</strong>
+              <small>{{ device.model }} · {{ device.location }}</small>
+            </div>
+            <em>{{ device.statusText }}</em>
+          </article>
+        </div>
+
+        <div v-else-if="activeResourceTab === 'routes'" class="resource-list">
+          <article
+            v-for="route in routes"
+            :key="route.id"
+            :class="{ active: selectedObject.id === route.id }"
+            @click="selectObject(route)"
+          >
+            <span class="resource-dot route"></span>
+            <div>
+              <strong>{{ route.name }}</strong>
+              <small>{{ route.distance }} · {{ route.points }} 个航点</small>
+            </div>
+            <em>{{ route.statusText }}</em>
+          </article>
+        </div>
+
+        <div v-else class="resource-list">
+          <article
+            v-for="layer in layers"
+            :key="layer.id"
+            :class="{ active: selectedObject.id === layer.id }"
+            @click="selectObject(layer)"
+          >
+            <span class="resource-dot layer"></span>
+            <div>
+              <strong>{{ layer.name }}</strong>
+              <small>{{ layer.type }} · {{ layer.count }} 个对象</small>
+            </div>
+            <em>{{ layer.visible ? '显示' : '隐藏' }}</em>
+          </article>
         </div>
       </section>
 
-      <section class="panel-section">
-        <div class="section-title">
-          <span></span>
-          <strong>气象信息概览</strong>
+      <section class="panel-block compact">
+        <div class="block-head">
+          <strong>告警与协同</strong>
+          <button>全部</button>
         </div>
-        <select v-model="selectedDevice" class="glass-select">
-          <option v-for="device in devices" :key="device">{{ device }}</option>
-        </select>
-        <div class="weather-grid">
-          <div v-for="item in weatherItems" :key="item.label">
-            <em>{{ item.icon }}</em>
-            <span>{{ item.label }}</span>
-            <strong>{{ item.value }}</strong>
-          </div>
-        </div>
-        <p class="weather-note">天气晴朗，适合飞行作业 <small>{{ currentTime }}</small></p>
-      </section>
-
-      <section class="panel-section alert-section">
-        <div class="section-title">
-          <span></span>
-          <strong>突发情况预警</strong>
-          <small>{{ alerts.length }}</small>
-        </div>
-        <div class="alert-filter">
-          <button class="active">全部</button>
-          <button>未读</button>
-          <button>已读</button>
-        </div>
-        <div class="alert-list">
+        <div class="alert-stream">
           <article v-for="alert in alerts" :key="alert.id">
-            <b></b>
+            <span :class="alert.level"></span>
             <div>
               <strong>{{ alert.title }}</strong>
-              <span>{{ alert.device }}</span>
+              <small>{{ alert.source }} · {{ alert.time }}</small>
             </div>
-            <em>{{ alert.time }}</em>
           </article>
         </div>
       </section>
     </aside>
 
-    <aside class="right-glass-panel">
-      <nav class="panel-tabs compact">
+    <section class="map-workspace">
+      <div class="map-status-strip">
+        <span>设备 4</span>
+        <span>在线 3</span>
+        <span>任务 3</span>
+        <span>标注 18</span>
+        <span>媒体 126</span>
+      </div>
+
+      <div class="layer-toolbar">
         <button
-          v-for="tab in rightTabs"
-          :key="tab.key"
-          :class="{ active: activeRightTab === tab.key }"
-          @click="activeRightTab = tab.key"
+          v-for="tool in mapTools"
+          :key="tool.key"
+          :class="{ active: selectedTool === tool.key }"
+          @click="selectTool(tool.key)"
         >
-          {{ tab.label }}
+          {{ tool.label }}
         </button>
-      </nav>
+      </div>
 
-      <section class="panel-section">
-        <div class="section-title">
-          <span></span>
-          <strong>航线概览</strong>
-        </div>
-        <div class="route-overview">
-          <div v-for="metric in routeMetrics" :key="metric.label">
-            <strong>{{ metric.value }}</strong>
-            <span>{{ metric.label }}</span>
+      <div class="mission-ribbon">
+        <button
+          v-for="mode in workModes"
+          :key="mode.key"
+          :class="{ active: activeWorkMode === mode.key }"
+          @click="activeWorkMode = mode.key"
+        >
+          {{ mode.label }}
+        </button>
+      </div>
+    </section>
+
+    <aside class="inspector-panel">
+      <section class="selected-card">
+        <div class="object-type">{{ selectedObject.kind }}</div>
+        <h2>{{ selectedObject.name }}</h2>
+        <p>{{ selectedObject.description }}</p>
+        <div class="object-meta">
+          <div v-for="item in selectedObject.meta" :key="item.label">
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
           </div>
         </div>
       </section>
 
-      <section class="panel-section">
-        <div class="section-title">
-          <span></span>
-          <strong>航线工具</strong>
+      <section class="panel-block">
+        <div class="block-head">
+          <strong>快捷操作</strong>
+          <button @click="openDetailRoute">详情</button>
         </div>
-        <div class="tool-actions">
-          <button @click="openRoute('/wayline')">导入航线</button>
-          <button @click="openRoute('/task')">自航线列表</button>
+        <div class="action-grid">
+          <button @click="openRoute('/devices')">设备列表</button>
+          <button @click="openRoute('/wayline')">航线库</button>
+          <button @click="openRoute('/task')">计划库</button>
+          <button @click="openRoute('/media')">媒体库</button>
         </div>
       </section>
 
-      <section class="panel-section route-card-list">
-        <article v-for="card in routeCards" :key="card.id" class="route-card">
-          <div>
-            <strong>{{ card.name }}</strong>
-            <span :class="{ active: card.active }">{{ card.active ? '使用中' : '待使用' }}</span>
+      <section class="panel-block">
+        <div class="block-head">
+          <strong>任务参数</strong>
+          <button @click="openRoute('/task/create-plan')">编辑</button>
+        </div>
+        <div class="param-list">
+          <div v-for="param in taskParams" :key="param.label">
+            <span>{{ param.label }}</span>
+            <strong>{{ param.value }}</strong>
           </div>
-          <p>{{ card.points }}个航点 / {{ card.duration }}分钟 / {{ card.distance }}</p>
-          <div class="route-card-actions">
-            <button @click="openRoute('/wayline')">下载</button>
-            <button @click="openRoute('/task/create-plan')">创建任务</button>
-            <button class="danger">删除</button>
-          </div>
-        </article>
+        </div>
       </section>
 
-      <section class="panel-section planning-panel">
-        <div class="section-title">
-          <span></span>
-          <strong>规划面板</strong>
+      <section class="panel-block media-preview">
+        <div class="block-head">
+          <strong>媒体回传</strong>
+          <button @click="openRoute('/media')">查看</button>
         </div>
-        <button @click="openRoute('/task/create-plan')">+ 新建航点航线</button>
+        <div class="media-grid">
+          <div v-for="media in mediaItems" :key="media.id">
+            <span>{{ media.type }}</span>
+            <strong>{{ media.name }}</strong>
+          </div>
+        </div>
       </section>
     </aside>
 
-    <div class="map-tool-strip">
-      <button
-        v-for="tool in mapTools"
-        :key="tool.key"
-        :class="{ active: selectedTool === tool.key }"
-        :title="tool.label"
-        @click="selectTool(tool.key)"
-      >
-        {{ tool.icon }}
-      </button>
-    </div>
-
-    <div class="compass-widget">
-      <span>N</span>
-      <strong>航向</strong>
-    </div>
-
-    <footer class="map-footer">
-      <span>比例尺：1803米</span>
-      <span>经度：117°17'20"E</span>
-      <span>纬度：31°52'26"N</span>
+    <footer class="timeline-panel">
+      <div class="timeline-head">
+        <strong>任务时间线</strong>
+        <span>实时任务、航线执行和媒体回传状态</span>
+      </div>
+      <div class="timeline-items">
+        <article v-for="task in tasks" :key="task.id">
+          <span :class="task.status"></span>
+          <div>
+            <strong>{{ task.name }}</strong>
+            <small>{{ task.time }} · {{ task.device }}</small>
+          </div>
+          <progress :value="task.progress" max="100"></progress>
+          <em>{{ task.progress }}%</em>
+        </article>
+      </div>
     </footer>
 
     <div v-if="mapLoadError" class="map-error">
@@ -187,80 +236,229 @@ import { useRouter } from 'vue-router'
 import AMapLoader from '@amap/amap-jsapi-loader'
 import { AMapConfig } from '/@/constants'
 
-type LeftTab = 'device' | 'airspace' | 'algorithm'
-type RightTab = 'route' | 'media'
+type ResourceTab = 'devices' | 'routes' | 'layers'
+type ModuleKey = 'project' | 'map' | 'annotation' | 'team' | 'media'
+type WorkMode = 'overview' | 'planning' | 'live'
+
+interface WorkbenchObject {
+  id: string
+  name: string
+  kind: string
+  description: string
+  route: string
+  meta: Array<{ label: string, value: string }>
+}
 
 const router = useRouter()
 const amapContainer = ref<HTMLDivElement | null>(null)
 const amapInstance = shallowRef<any>(null)
 const mapInstance = shallowRef<any>(null)
-const mapLoadError = ref('')
 const clockTimer = ref<number | null>(null)
-const activeLeftTab = ref<LeftTab>('device')
-const activeRightTab = ref<RightTab>('route')
+const mapLoadError = ref('')
 const currentTime = ref('')
 const keyword = ref('')
-const selectedTool = ref('zoom-in')
-const selectedDevice = ref('设备 7CTDLCE00AG83Q')
+const activeModule = ref<ModuleKey>('project')
+const activeResourceTab = ref<ResourceTab>('devices')
+const activeWorkMode = ref<WorkMode>('overview')
+const selectedTool = ref('图层')
 
-const leftTabs = [
-  { key: 'device' as const, label: '设备管理' },
-  { key: 'airspace' as const, label: '空域管理' },
-  { key: 'algorithm' as const, label: '算法库' },
-]
-
-const rightTabs = [
-  { key: 'route' as const, label: '航线' },
+const modules = [
+  { key: 'project' as const, label: '项目' },
+  { key: 'map' as const, label: '地图' },
+  { key: 'annotation' as const, label: '标注' },
+  { key: 'team' as const, label: '团队' },
   { key: 'media' as const, label: '媒体' },
 ]
 
-const devices = ['设备 7CTDLCE00AG83Q', 'DJI Dock2', 'M30T-06']
-
-const weatherItems = [
-  { label: '温度', value: '34.7°C', icon: '☼' },
-  { label: '湿度', value: '73.0%', icon: '~' },
-  { label: '风速', value: '0.0m/s', icon: '↗' },
-  { label: '降雨量', value: '0.0mm', icon: '▦' },
+const resourceTabs = [
+  { key: 'devices' as const, label: '设备' },
+  { key: 'routes' as const, label: '航线' },
+  { key: 'layers' as const, label: '图层' },
 ]
 
-const alerts = [
-  { id: 'a1', title: '高温预警（≥45°C）', device: 'DJI Dock2', time: '今天 18:28' },
-  { id: 'a2', title: '空调外循环出风口温差过大', device: 'DJI Dock2', time: '今天 18:26' },
-  { id: 'a3', title: '雨量过大，无法执行飞行任务', device: 'DJI Dock2', time: '今天 18:24' },
-  { id: 'a4', title: '未知错误（dock_tip_0x19114816）', device: 'DJI Dock2', time: '今天 18:22' },
-  { id: 'a5', title: '空域边界接近告警', device: 'M30T-06', time: '今天 18:20' },
-]
-
-const routeMetrics = [
-  { label: '总航线数', value: '50' },
-  { label: '活跃航线', value: '50' },
-  { label: '固定航线', value: '50' },
-  { label: '动态航线', value: '0' },
-  { label: '总里程', value: '384.6km' },
-  { label: '冲突检测', value: '0' },
-]
-
-const routeCards = [
-  { id: '111', name: '111', points: 0, duration: 19, distance: '7.0km', active: true },
-  { id: '093001', name: '093001', points: 0, duration: 48, distance: '2.8km', active: true },
-  { id: '0111', name: '0111', points: 0, duration: 32, distance: '5.0km', active: true },
+const workModes = [
+  { key: 'overview' as const, label: '态势' },
+  { key: 'planning' as const, label: '规划' },
+  { key: 'live' as const, label: '直播' },
 ]
 
 const mapTools = [
-  { key: 'zoom-in', label: '放大', icon: '+' },
-  { key: 'zoom-out', label: '缩小', icon: '-' },
-  { key: 'locate', label: '定位', icon: '◎' },
-  { key: 'measure', label: '测距', icon: '×' },
-  { key: '2d', label: '2D', icon: '2D' },
-  { key: 'draw', label: '绘制', icon: '✎' },
-  { key: 'layer', label: '图层', icon: '▣' },
-  { key: 'play', label: '播放', icon: '▶' },
+  { key: '图层', label: '图层' },
+  { key: '标注', label: '标注' },
+  { key: '测距', label: '测距' },
+  { key: '框选', label: '框选' },
+  { key: '回放', label: '回放' },
 ]
+
+const devices = [
+  {
+    id: 'dock-a',
+    name: '东区机库 A',
+    model: 'DJI Dock 2',
+    location: '合肥高新区',
+    status: 'online',
+    statusText: '在线',
+    kind: '机场设备',
+    route: '/devices',
+    description: '用于东区日常巡检任务，当前空闲，可创建机场航线任务。',
+    meta: [
+      { label: '设备 SN', value: '7CTDM3D001' },
+      { label: '电池', value: '96%' },
+      { label: '网络', value: '4G / 良好' },
+      { label: '固件', value: '09.02.04.12' },
+    ],
+  },
+  {
+    id: 'drone-01',
+    name: '巡检无人机 01',
+    model: 'M3TD',
+    location: '航线 R-01',
+    status: 'flying',
+    statusText: '飞行中',
+    kind: '无人机',
+    route: '/devices',
+    description: '正在执行矿区正射巡检航线，媒体文件持续回传。',
+    meta: [
+      { label: '高度', value: '120m' },
+      { label: '速度', value: '8m/s' },
+      { label: '电量', value: '72%' },
+      { label: 'RTK', value: '固定' },
+    ],
+  },
+  {
+    id: 'robot-r1',
+    name: '巡检机器狗 R1',
+    model: 'Robot Dog',
+    location: '地面复核区',
+    status: 'online',
+    statusText: '在线',
+    kind: '空地协同设备',
+    route: '/devices',
+    description: '承担地面近距离复核任务，可与无人机任务形成空地协同闭环。',
+    meta: [
+      { label: '电量', value: '82%' },
+      { label: '任务', value: '地面复核' },
+      { label: '载荷', value: '可见光' },
+      { label: '链路', value: '在线' },
+    ],
+  },
+]
+
+const routes = [
+  {
+    id: 'route-01',
+    name: '矿区正射巡检航线',
+    distance: '7.0km',
+    points: 19,
+    statusText: '使用中',
+    kind: '航线',
+    route: '/wayline',
+    description: '覆盖矿区东侧道路和生产区域，适合自动化周期巡检。',
+    meta: [
+      { label: '航点', value: '19' },
+      { label: '预计', value: '26分钟' },
+      { label: '高度', value: '120m' },
+      { label: '类型', value: '正射巡检' },
+    ],
+  },
+  {
+    id: 'route-02',
+    name: '倾斜摄影面状航线',
+    distance: '2.8km',
+    points: 48,
+    statusText: '待执行',
+    kind: '航线',
+    route: '/wayline',
+    description: '面向三维建模采集，含多角度拍摄策略。',
+    meta: [
+      { label: '航点', value: '48' },
+      { label: '预计', value: '45分钟' },
+      { label: '重叠率', value: '80%' },
+      { label: '类型', value: '倾斜摄影' },
+    ],
+  },
+]
+
+const layers = [
+  {
+    id: 'layer-airspace',
+    name: '空域规则',
+    type: '禁飞/限飞',
+    count: 6,
+    visible: true,
+    kind: '地图图层',
+    route: '/flight-area',
+    description: '展示任务区、禁飞区、限飞区以及设备同步状态。',
+    meta: [
+      { label: '禁飞区', value: '2' },
+      { label: '限飞区', value: '3' },
+      { label: '任务区', value: '1' },
+      { label: '同步', value: '已同步' },
+    ],
+  },
+  {
+    id: 'layer-media',
+    name: '媒体成果',
+    type: '图片/视频',
+    count: 126,
+    visible: true,
+    kind: '媒体图层',
+    route: '/media',
+    description: '按拍摄点位在地图上展示媒体成果，便于复核。',
+    meta: [
+      { label: '图片', value: '108' },
+      { label: '视频', value: '18' },
+      { label: '今日新增', value: '42' },
+      { label: 'AI识别', value: '可接入' },
+    ],
+  },
+]
+
+const searchResult: WorkbenchObject = {
+  id: 'search',
+  name: '搜索结果',
+  kind: '检索',
+  route: '/dashboard',
+  description: '当前为前端演示检索，后续可接入设备、航线、标注和媒体统一搜索。',
+  meta: [
+    { label: '关键词', value: keyword.value || '未输入' },
+    { label: '范围', value: '全项目' },
+    { label: '结果', value: '演示' },
+    { label: '状态', value: '待接入' },
+  ],
+}
+
+const alerts = [
+  { id: 'a1', title: '机场风速接近阈值', source: '东区机库 A', time: '18:28', level: 'warn' },
+  { id: 'a2', title: '空域边界接近提醒', source: '巡检无人机 01', time: '18:24', level: 'danger' },
+  { id: 'a3', title: '媒体回传队列繁忙', source: '媒体库', time: '18:18', level: 'info' },
+]
+
+const tasks = [
+  { id: 't1', name: '东区矿山自动巡检', time: '执行中', device: '东区机库 A', progress: 68, status: 'running' },
+  { id: 't2', name: '西区倾斜摄影建模', time: '明日 09:00', device: '西区机库 B', progress: 0, status: 'waiting' },
+  { id: 't3', name: '河道应急复核', time: '已完成', device: 'M30T-06', progress: 100, status: 'done' },
+]
+
+const taskParams = [
+  { label: '返航高度', value: '120m' },
+  { label: '失控动作', value: '返航' },
+  { label: '媒体策略', value: '优先回传' },
+  { label: '协同人员', value: '3 人在线' },
+]
+
+const mediaItems = [
+  { id: 'm1', type: 'IMG', name: '矿区巡检_001.jpg' },
+  { id: 'm2', type: 'AI', name: '裂缝识别_标注.png' },
+  { id: 'm3', type: 'VID', name: '热成像复核.mp4' },
+]
+
+const selectedObject = ref<WorkbenchObject>(devices[0])
 
 const currentDate = computed(() => {
   const now = new Date()
   const weekday = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'][now.getDay()]
-  return `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日${weekday}`
+  return `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 ${weekday}`
 })
 
 function updateClock () {
@@ -271,40 +469,52 @@ function openRoute (path: string) {
   router.push(path)
 }
 
-function selectTool (key: string) {
-  selectedTool.value = key
-  const map = mapInstance.value
-  if (!map) return
-  if (key === 'zoom-in') map.zoomIn()
-  if (key === 'zoom-out') map.zoomOut()
-  if (key === 'locate') map.setCenter([117.283, 31.874])
+function openDetailRoute () {
+  openRoute(selectedObject.value.route)
 }
 
-function createMarker (AMap: any, item: { name: string, position: number[], type: 'dock' | 'drone' }) {
-  return new AMap.Marker({
+function selectObject (object: WorkbenchObject) {
+  selectedObject.value = object
+}
+
+function selectTool (tool: string) {
+  selectedTool.value = tool
+  const map = mapInstance.value
+  if (!map) return
+  if (tool === '回放') map.setZoomAndCenter(13, [117.283, 31.874])
+  if (tool === '测距') map.setZoom(14)
+}
+
+function createMarker (AMap: any, item: { id: string, name: string, position: number[], type: string }) {
+  const marker = new AMap.Marker({
     position: item.position,
     anchor: 'center',
-    content: `<div class="screen-marker ${item.type}">${item.name}</div>`,
+    content: `<div class="workbench-marker ${item.type}">${item.name}</div>`,
   })
+  marker.on('click', () => {
+    const match = [...devices, ...routes, ...layers].find(resource => resource.id === item.id)
+    if (match) selectedObject.value = match
+  })
+  return marker
 }
 
 function renderMapOverlays (AMap: any, map: any) {
-  const routePath = [
-    [117.245, 31.858],
-    [117.266, 31.875],
+  const flightPath = [
+    [117.244, 31.858],
+    [117.265, 31.876],
     [117.292, 31.866],
-    [117.325, 31.892],
+    [117.326, 31.892],
   ]
   const markers = [
-    { name: '机场A', type: 'dock' as const, position: [117.245, 31.858] },
-    { name: '无人机01', type: 'drone' as const, position: [117.292, 31.866] },
-    { name: '机器狗R1', type: 'dock' as const, position: [117.315, 31.875] },
+    { id: 'dock-a', name: '东区机库 A', type: 'dock', position: [117.244, 31.858] },
+    { id: 'drone-01', name: '巡检无人机 01', type: 'drone', position: [117.292, 31.866] },
+    { id: 'robot-r1', name: '机器狗 R1', type: 'robot', position: [117.315, 31.875] },
   ].map(item => createMarker(AMap, item))
 
   const routeLine = new AMap.Polyline({
-    path: routePath,
+    path: flightPath,
     strokeColor: '#00d8ff',
-    strokeWeight: 4,
+    strokeWeight: 5,
     strokeOpacity: 0.95,
     showDir: true,
     lineJoin: 'round',
@@ -321,7 +531,7 @@ function renderMapOverlays (AMap: any, map: any) {
   })
 
   map.add([routeLine, taskArea, ...markers])
-  map.setFitView([routeLine, taskArea, ...markers], false, [80, 420, 80, 360])
+  map.setFitView([routeLine, taskArea, ...markers], false, [110, 430, 180, 340])
 }
 
 async function initAmap () {
@@ -368,556 +578,540 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss" scoped>
-.command-center {
+.flight-workbench {
   position: fixed;
   inset: 0;
   z-index: 100;
-  min-height: 100vh;
   overflow: hidden;
-  color: #d8f3ff;
-  background: #03152a;
+  color: #d9f4ff;
+  background: #021428;
 }
 
 .map-canvas,
-.map-tint {
+.map-overlay {
   position: absolute;
   inset: 0;
 }
 
 .map-canvas {
   z-index: 0;
-  background: #05213e;
+  background: #061f3a;
 }
 
-.map-tint {
+.map-overlay {
   z-index: 1;
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(3, 18, 36, 0.78), rgba(3, 18, 36, 0.12) 24%, rgba(3, 18, 36, 0.08) 72%, rgba(3, 18, 36, 0.76)),
-    linear-gradient(180deg, rgba(0, 44, 83, 0.42), transparent 28%, rgba(0, 20, 42, 0.36)),
-    repeating-linear-gradient(90deg, rgba(0, 216, 255, 0.04) 0 1px, transparent 1px 72px);
+    linear-gradient(90deg, rgba(2, 14, 28, 0.76), rgba(2, 14, 28, 0.08) 24%, rgba(2, 14, 28, 0.08) 76%, rgba(2, 14, 28, 0.76)),
+    linear-gradient(180deg, rgba(0, 50, 95, 0.36), transparent 30%, rgba(0, 18, 38, 0.5)),
+    repeating-linear-gradient(90deg, rgba(0, 216, 255, 0.035) 0 1px, transparent 1px 72px);
 }
 
-.top-command-bar,
-.left-glass-panel,
-.right-glass-panel,
-.map-tool-strip,
-.compass-widget,
-.map-footer,
+.workbench-topbar,
+.resource-panel,
+.inspector-panel,
+.timeline-panel,
+.map-status-strip,
+.layer-toolbar,
+.mission-ribbon,
 .map-error {
   position: absolute;
   z-index: 3;
 }
 
-.top-command-bar {
+.workbench-topbar {
   top: 0;
   left: 0;
   right: 0;
   height: 64px;
   display: grid;
-  grid-template-columns: 350px 150px 150px 128px minmax(280px, 500px) 120px;
+  grid-template-columns: 310px 430px minmax(280px, 1fr) 150px 104px;
   align-items: center;
-  gap: 18px;
-  padding: 0 34px;
+  gap: 14px;
+  padding: 0 22px;
   border-bottom: 1px solid rgba(0, 216, 255, 0.34);
-  background: rgba(3, 24, 48, 0.84);
-  box-shadow: 0 12px 38px rgba(0, 28, 58, 0.45);
-  backdrop-filter: blur(10px);
+  background: rgba(2, 22, 44, 0.84);
+  box-shadow: 0 14px 38px rgba(0, 20, 44, 0.42);
+  backdrop-filter: blur(12px);
 }
 
-.brand-block {
-  padding-left: 22px;
-  border-left: 3px solid rgba(0, 216, 255, 0.85);
+.project-title {
+  padding-left: 16px;
+  border-left: 3px solid #00d8ff;
 }
 
-.brand-block strong,
-.brand-block span,
-.clock-block strong,
-.clock-block span {
+.project-title strong,
+.project-title span,
+.top-stat strong,
+.top-stat span {
   display: block;
 }
 
-.brand-block strong {
+.project-title strong {
   color: #fff;
-  font-size: 20px;
-  line-height: 1.1;
-  letter-spacing: 0;
+  font-size: 18px;
 }
 
-.brand-block span,
-.clock-block span {
-  margin-top: 6px;
-  color: #b8eaff;
+.project-title span,
+.top-stat span {
+  margin-top: 4px;
+  color: #9ddff5;
   font-size: 12px;
 }
 
-.clock-block strong {
-  color: #00d8ff;
-  font-family: Consolas, monospace;
-  font-size: 24px;
-  font-weight: 500;
-}
-
-.status-chip {
-  height: 38px;
+.module-tabs,
+.resource-switch,
+.mission-ribbon {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(0, 174, 255, 0.42);
-  border-radius: 4px;
-  color: #fff;
-  background: rgba(4, 42, 78, 0.68);
-  font-weight: 650;
-}
-
-.search-box {
-  min-width: 0;
-  height: 38px;
-  display: grid;
-  grid-template-columns: 1fr 42px;
-  border: 1px solid rgba(0, 174, 255, 0.42);
-  border-radius: 4px;
-  background: rgba(11, 56, 94, 0.58);
-}
-
-.search-box input {
-  min-width: 0;
-  padding: 0 16px;
-  border: 0;
-  outline: 0;
-  color: #d8f3ff;
-  background: transparent;
-}
-
-.search-box input::placeholder {
-  color: rgba(184, 234, 255, 0.52);
-}
-
-.search-box button {
-  border: 0;
-  color: #00d8ff;
-  background: rgba(0, 126, 191, 0.4);
-  cursor: pointer;
-}
-
-.admin-box {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  color: #fff;
-}
-
-.online-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #58d000;
-  box-shadow: 0 0 12px #58d000;
-}
-
-.left-glass-panel,
-.right-glass-panel {
-  top: 76px;
-  bottom: 16px;
-  width: 280px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid rgba(0, 216, 255, 0.24);
-  background: rgba(2, 20, 39, 0.66);
-  box-shadow: inset 0 0 26px rgba(0, 170, 255, 0.08), 0 18px 50px rgba(0, 20, 44, 0.38);
-  backdrop-filter: blur(9px);
-}
-
-.left-glass-panel {
-  left: 0;
-}
-
-.right-glass-panel {
-  right: 0;
-  width: 300px;
-}
-
-.panel-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  height: 42px;
-  border-bottom: 1px solid rgba(0, 216, 255, 0.2);
-}
-
-.panel-tabs.compact {
-  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
 }
 
 button {
   font: inherit;
 }
 
-.panel-tabs button,
-.alert-filter button,
-.tool-actions button,
-.route-card-actions button,
-.planning-panel button {
-  border: 0;
-  color: #b8eaff;
-  background: transparent;
+.module-tabs button,
+.resource-switch button,
+.mission-ribbon button,
+.layer-toolbar button,
+.primary-action,
+.block-head button,
+.action-grid button,
+.global-search button {
+  border: 1px solid rgba(0, 216, 255, 0.22);
+  border-radius: 4px;
+  color: #bdefff;
+  background: rgba(4, 42, 76, 0.58);
   cursor: pointer;
 }
 
-.panel-tabs button.active {
+.module-tabs button {
+  height: 34px;
+  padding: 0 14px;
+}
+
+.module-tabs button.active,
+.resource-switch button.active,
+.mission-ribbon button.active,
+.layer-toolbar button.active {
   color: #fff;
-  background: linear-gradient(180deg, rgba(0, 150, 220, 0.34), rgba(0, 150, 220, 0.08));
-  box-shadow: inset 0 -2px 0 #00d8ff;
+  border-color: #00d8ff;
+  background: rgba(0, 142, 220, 0.58);
+  box-shadow: inset 0 -2px 0 #00d8ff, 0 0 14px rgba(0, 216, 255, 0.22);
 }
 
-.panel-section {
-  padding: 10px 12px;
-  border: 1px solid rgba(0, 216, 255, 0.16);
-  background: rgba(5, 31, 58, 0.5);
+.global-search {
+  height: 38px;
+  display: grid;
+  grid-template-columns: 1fr 56px;
+  border: 1px solid rgba(0, 216, 255, 0.28);
+  border-radius: 4px;
+  background: rgba(2, 34, 62, 0.66);
 }
 
-.section-title {
+.global-search input {
+  min-width: 0;
+  padding: 0 14px;
+  border: 0;
+  outline: 0;
+  color: #d9f4ff;
+  background: transparent;
+}
+
+.global-search input::placeholder {
+  color: rgba(189, 239, 255, 0.48);
+}
+
+.global-search button {
+  border: 0;
+  border-left: 1px solid rgba(0, 216, 255, 0.22);
+  border-radius: 0;
+}
+
+.top-stat strong {
+  color: #00d8ff;
+  font-family: Consolas, monospace;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.primary-action {
+  height: 38px;
+  color: #fff;
+  background: linear-gradient(180deg, rgba(0, 180, 255, 0.86), rgba(0, 94, 166, 0.72));
+}
+
+.resource-panel,
+.inspector-panel {
+  top: 78px;
+  bottom: 116px;
+  width: 318px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.resource-panel {
+  left: 14px;
+}
+
+.inspector-panel {
+  right: 14px;
+  width: 336px;
+}
+
+.project-card,
+.panel-block,
+.selected-card,
+.timeline-panel,
+.map-status-strip,
+.layer-toolbar,
+.mission-ribbon {
+  border: 1px solid rgba(0, 216, 255, 0.2);
+  background: rgba(3, 24, 48, 0.72);
+  box-shadow: inset 0 0 24px rgba(0, 170, 255, 0.08), 0 14px 38px rgba(0, 18, 38, 0.34);
+  backdrop-filter: blur(10px);
+}
+
+.project-card {
+  min-height: 72px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  color: #00d8ff;
+  justify-content: space-between;
+  padding: 14px;
 }
 
-.section-title span {
-  width: 3px;
-  height: 18px;
-  background: #00d8ff;
-  box-shadow: 0 0 10px #00d8ff;
-}
-
-.section-title small {
-  margin-left: auto;
-  color: #ff5964;
-}
-
-.mini-map {
-  position: relative;
-  height: 120px;
-  overflow: hidden;
-  border-radius: 4px;
-  border: 1px solid rgba(0, 216, 255, 0.2);
-  background:
-    linear-gradient(135deg, rgba(0, 216, 255, 0.22), transparent 45%),
-    linear-gradient(45deg, #3a6f3b, #d0c887 48%, #6da4ca);
-}
-
-.mini-map em {
-  position: absolute;
-  left: 10px;
-  top: 8px;
-  color: #00d8ff;
-  font-style: normal;
-  font-weight: 650;
-}
-
-.mini-road {
-  position: absolute;
-  background: rgba(255, 222, 83, 0.82);
-}
-
-.mini-road.horizontal {
-  left: 0;
-  right: 0;
-  top: 56px;
-  height: 8px;
-  transform: rotate(-8deg);
-}
-
-.mini-road.vertical {
-  top: 0;
-  bottom: 0;
-  left: 118px;
-  width: 7px;
-  transform: rotate(16deg);
-}
-
-.mini-pin {
-  position: absolute;
-  right: 42px;
-  top: 34px;
-  width: 24px;
-  height: 24px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
+.project-card strong,
+.selected-card h2,
+.block-head strong,
+.resource-list strong,
+.timeline-head strong {
   color: #fff;
-  background: #148cff;
 }
 
-.glass-select {
-  width: 100%;
-  height: 30px;
+.project-card span,
+.resource-list small,
+.alert-stream small,
+.selected-card p,
+.timeline-head span,
+.timeline-items small,
+.param-list span,
+.media-grid span {
+  color: #9ddff5;
+}
+
+.project-card em {
+  padding: 4px 9px;
+  border-radius: 10px;
+  color: #7cff9e;
+  background: rgba(24, 168, 82, 0.22);
+  font-style: normal;
+}
+
+.panel-block,
+.selected-card {
+  padding: 12px;
+}
+
+.panel-block.compact {
+  min-height: 0;
+  flex: 1;
+}
+
+.block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 10px;
-  border: 1px solid rgba(0, 216, 255, 0.24);
-  color: #e7f8ff;
-  background: rgba(6, 38, 68, 0.86);
 }
 
-.weather-grid {
+.block-head strong {
+  padding-left: 9px;
+  border-left: 3px solid #00d8ff;
+}
+
+.block-head button {
+  height: 26px;
+  padding: 0 9px;
+}
+
+.resource-switch {
+  margin-bottom: 10px;
+}
+
+.resource-switch button {
+  flex: 1;
+  height: 30px;
+}
+
+.resource-list,
+.alert-stream,
+.route-card-list {
+  display: grid;
+  gap: 8px;
+}
+
+.resource-list article,
+.alert-stream article,
+.timeline-items article {
+  display: grid;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(0, 216, 255, 0.13);
+  background: rgba(0, 20, 38, 0.5);
+}
+
+.resource-list article {
+  grid-template-columns: 10px 1fr auto;
+  min-height: 58px;
+  padding: 9px;
+  cursor: pointer;
+}
+
+.resource-list article.active {
+  border-color: #00d8ff;
+  background: rgba(0, 130, 210, 0.24);
+}
+
+.resource-list strong,
+.resource-list small {
+  display: block;
+}
+
+.resource-list em {
+  color: #7cff9e;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.resource-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #00d8ff;
+}
+
+.resource-dot.online {
+  background: #52ff78;
+}
+
+.resource-dot.flying {
+  background: #00d8ff;
+  box-shadow: 0 0 14px #00d8ff;
+}
+
+.resource-dot.route {
+  border-radius: 2px;
+  background: #ffcc4d;
+}
+
+.resource-dot.layer {
+  border-radius: 2px;
+  background: #b77cff;
+}
+
+.alert-stream {
+  max-height: 210px;
+  overflow: auto;
+}
+
+.alert-stream article {
+  grid-template-columns: 8px 1fr;
+  min-height: 50px;
+  padding: 8px;
+}
+
+.alert-stream article > span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.alert-stream .warn {
+  background: #ffbf47;
+}
+
+.alert-stream .danger {
+  background: #ff5964;
+}
+
+.alert-stream .info {
+  background: #00d8ff;
+}
+
+.map-status-strip {
+  top: 78px;
+  left: 352px;
+  right: 370px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 14px;
+}
+
+.map-status-strip span {
+  color: #d9f4ff;
+}
+
+.layer-toolbar {
+  right: 370px;
+  top: 134px;
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+}
+
+.layer-toolbar button {
+  width: 58px;
+  height: 38px;
+}
+
+.mission-ribbon {
+  left: 352px;
+  top: 134px;
+  padding: 8px;
+}
+
+.mission-ribbon button {
+  height: 34px;
+  padding: 0 18px;
+}
+
+.selected-card {
+  min-height: 180px;
+}
+
+.object-type {
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: 12px;
+  color: #00d8ff;
+  background: rgba(0, 216, 255, 0.12);
+}
+
+.selected-card h2 {
+  margin: 12px 0 8px;
+  font-size: 22px;
+}
+
+.selected-card p {
+  margin: 0 0 14px;
+  line-height: 1.65;
+}
+
+.object-meta,
+.param-list {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 
-.weather-grid div {
-  min-height: 42px;
-  padding: 7px;
-  border: 1px solid rgba(0, 216, 255, 0.14);
-  background: rgba(2, 19, 35, 0.42);
-}
-
-.weather-grid em,
-.weather-grid span,
-.weather-grid strong {
-  display: inline-block;
-}
-
-.weather-grid em {
-  color: #00d8ff;
-  font-style: normal;
-  margin-right: 6px;
-}
-
-.weather-grid span {
-  color: #b8eaff;
-  font-size: 12px;
-}
-
-.weather-grid strong {
-  float: right;
-  color: #fff;
-}
-
-.weather-note {
-  margin: 10px 0 0;
-  color: #fff;
-  line-height: 1.6;
-}
-
-.weather-note small {
-  float: right;
-  color: #b8eaff;
-}
-
-.alert-section {
-  min-height: 0;
-  flex: 1;
-  overflow: hidden;
-}
-
-.alert-filter {
-  display: flex;
-  gap: 14px;
-  margin-bottom: 8px;
-}
-
-.alert-filter button.active {
-  color: #ff5964;
-}
-
-.alert-list {
+.object-meta div,
+.param-list div,
+.media-grid div {
+  min-height: 52px;
   display: grid;
-  gap: 8px;
-  max-height: 310px;
-  overflow: auto;
-  padding-right: 4px;
+  align-content: center;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid rgba(0, 216, 255, 0.13);
+  background: rgba(0, 20, 38, 0.44);
 }
 
-.alert-list article {
-  display: grid;
-  grid-template-columns: 8px 1fr auto;
-  gap: 8px;
-  align-items: center;
-  min-height: 54px;
-  padding: 7px;
-  border-left: 3px solid #ff5964;
-  background: rgba(80, 22, 34, 0.54);
-}
-
-.alert-list b {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #ff5964;
-}
-
-.alert-list strong,
-.alert-list span {
+.object-meta span,
+.object-meta strong,
+.param-list span,
+.param-list strong {
   display: block;
 }
 
-.alert-list strong {
-  color: #ff737c;
-  font-size: 12px;
+.object-meta strong,
+.param-list strong {
+  color: #fff;
 }
 
-.alert-list span,
-.alert-list em {
-  color: #b8eaff;
-  font-size: 11px;
-  font-style: normal;
-}
-
-.route-overview {
+.action-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
-  background: rgba(0, 216, 255, 0.14);
-}
-
-.route-overview div {
-  min-height: 58px;
-  display: grid;
-  place-items: center;
-  background: rgba(5, 31, 58, 0.76);
-}
-
-.route-overview strong {
-  color: #00d8ff;
-  font-size: 22px;
-}
-
-.route-overview span,
-.route-card p {
-  color: #b8eaff;
-  font-size: 12px;
-}
-
-.tool-actions,
-.route-card-actions {
-  display: flex;
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 
-.tool-actions button,
-.route-card-actions button,
-.planning-panel button {
-  height: 28px;
-  padding: 0 10px;
-  border-radius: 4px;
-  color: #e7f8ff;
-  background: rgba(0, 139, 208, 0.46);
+.action-grid button {
+  height: 34px;
 }
 
-.route-card-list {
+.media-grid {
   display: grid;
+  gap: 8px;
+}
+
+.media-grid strong {
+  color: #fff;
+  font-size: 12px;
+}
+
+.timeline-panel {
+  left: 352px;
+  right: 370px;
+  bottom: 14px;
+  height: 86px;
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 14px;
+  padding: 12px;
+}
+
+.timeline-head {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+}
+
+.timeline-items {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  min-height: 0;
-  overflow: auto;
 }
 
-.route-card {
-  padding: 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(0, 216, 255, 0.16);
-  background: rgba(2, 19, 35, 0.46);
-}
-
-.route-card > div:first-child {
-  display: flex;
-  justify-content: space-between;
-  color: #fff;
-}
-
-.route-card > div:first-child span {
-  padding: 2px 8px;
-  border-radius: 4px;
-  color: #79ff7b;
-  background: rgba(68, 183, 80, 0.2);
-  font-size: 12px;
-}
-
-.route-card p {
-  margin: 8px 0;
-}
-
-.route-card-actions button:nth-child(2) {
-  background: rgba(73, 206, 82, 0.62);
-}
-
-.route-card-actions button.danger {
-  background: rgba(255, 89, 100, 0.8);
-}
-
-.planning-panel button {
-  width: 100%;
-}
-
-.map-tool-strip {
-  top: 112px;
-  right: 322px;
-  display: grid;
-  gap: 8px;
+.timeline-items article {
+  grid-template-columns: 8px 1fr 78px 42px;
   padding: 8px;
-  border-radius: 8px;
-  background: rgba(230, 246, 255, 0.92);
-  box-shadow: 0 16px 36px rgba(0, 20, 44, 0.25);
 }
 
-.map-tool-strip button {
-  width: 52px;
-  height: 52px;
-  border: 1px solid rgba(0, 139, 208, 0.2);
-  border-radius: 5px;
-  color: #1686dc;
-  background: #f5fbff;
-  cursor: pointer;
-}
-
-.map-tool-strip button.active {
-  color: #fff;
-  border-color: #148cff;
-  background: #67c1ff;
-}
-
-.compass-widget {
-  top: 86px;
-  left: 338px;
-  width: 78px;
-  height: 78px;
-  display: grid;
-  place-items: center;
+.timeline-items article > span {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  color: #148cff;
-  background: rgba(241, 249, 255, 0.92);
-  box-shadow: 0 10px 30px rgba(0, 20, 44, 0.22);
 }
 
-.compass-widget span {
-  position: absolute;
-  top: 7px;
-  font-size: 12px;
+.timeline-items .running {
+  background: #00d8ff;
+  box-shadow: 0 0 12px #00d8ff;
 }
 
-.compass-widget strong {
-  font-size: 13px;
+.timeline-items .waiting {
+  background: #ffbf47;
 }
 
-.map-footer {
-  left: 296px;
-  right: 296px;
-  bottom: 8px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 18px;
-  border-radius: 14px;
-  color: #e7f8ff;
-  background: rgba(3, 24, 48, 0.8);
+.timeline-items .done {
+  background: #52ff78;
+}
+
+.timeline-items progress {
+  width: 78px;
+  height: 6px;
+  accent-color: #00d8ff;
+}
+
+.timeline-items em {
+  color: #d9f4ff;
+  font-style: normal;
 }
 
 .map-error {
   left: 50%;
-  bottom: 70px;
+  bottom: 122px;
   transform: translateX(-50%);
   display: grid;
   gap: 4px;
@@ -929,100 +1123,93 @@ button {
   background: rgba(40, 10, 20, 0.88);
 }
 
-:deep(.screen-marker) {
+:deep(.workbench-marker) {
   height: 28px;
   display: inline-flex;
   align-items: center;
   padding: 0 10px;
-  border-radius: 15px;
+  border-radius: 14px;
   color: #fff;
   font-size: 12px;
   font-weight: 700;
-  box-shadow: 0 0 18px rgba(0, 216, 255, 0.6);
+  box-shadow: 0 0 18px rgba(0, 216, 255, 0.55);
 }
 
-:deep(.screen-marker.dock) {
+:deep(.workbench-marker.dock) {
   background: #0e8bff;
 }
 
-:deep(.screen-marker.drone) {
+:deep(.workbench-marker.drone) {
   background: #00b894;
 }
 
+:deep(.workbench-marker.robot) {
+  background: #7c5cff;
+}
+
 @media (max-width: 1360px) {
-  .top-command-bar {
-    grid-template-columns: 270px 130px 120px 110px minmax(220px, 1fr) 90px;
+  .workbench-topbar {
+    grid-template-columns: 260px 330px minmax(220px, 1fr) 130px 94px;
     gap: 10px;
-    padding: 0 18px;
+    padding: 0 14px;
   }
 
-  .brand-block strong {
-    font-size: 17px;
+  .resource-panel {
+    width: 290px;
   }
 
-  .left-glass-panel {
-    width: 270px;
+  .inspector-panel {
+    width: 310px;
   }
 
-  .right-glass-panel {
-    width: 286px;
+  .map-status-strip,
+  .mission-ribbon,
+  .timeline-panel {
+    left: 318px;
   }
 
-  .map-tool-strip {
-    right: 304px;
-  }
-
-  .map-footer {
-    left: 286px;
-    right: 286px;
+  .map-status-strip,
+  .layer-toolbar,
+  .timeline-panel {
+    right: 334px;
   }
 }
 
-@media (max-width: 960px) {
-  .top-command-bar {
-    height: auto;
+@media (max-width: 980px) {
+  .workbench-topbar {
+    height: 120px;
     grid-template-columns: 1fr 1fr;
-    padding: 12px;
   }
 
-  .brand-block,
-  .search-box {
+  .module-tabs,
+  .global-search {
     grid-column: 1 / -1;
   }
 
-  .left-glass-panel,
-  .right-glass-panel {
-    top: 170px;
-    bottom: 14px;
-    width: 260px;
-    margin: 0;
-  }
-
-  .left-glass-panel {
+  .resource-panel {
+    top: 132px;
+    bottom: 104px;
     left: 10px;
+    width: 260px;
   }
 
-  .right-glass-panel {
+  .inspector-panel {
+    top: 132px;
+    bottom: 104px;
     right: 10px;
+    width: 280px;
   }
 
-  .map-tool-strip {
-    right: 282px;
-    top: 190px;
-  }
-
-  .map-tool-strip button {
-    width: 42px;
-    height: 42px;
-  }
-
-  .compass-widget {
-    display: none;
-  }
-
-  .map-footer {
+  .map-status-strip,
+  .mission-ribbon,
+  .timeline-panel {
     left: 284px;
-    right: 284px;
+  }
+
+  .map-status-strip,
+  .layer-toolbar,
+  .timeline-panel {
+    right: 304px;
   }
 }
 </style>
