@@ -87,7 +87,7 @@
           <div class="drone-avatar" :style="droneStyle">
             <span></span>
           </div>
-          <div class="flight-vector">
+          <div class="flight-vector" :style="flightVectorStyle">
             <span></span>
           </div>
           <div class="sim-readout glass-panel">
@@ -308,6 +308,7 @@ const flightState = reactive<FlightState>({
   throttle: 0,
   yaw: 0,
 })
+const initialHeading = flightState.heading
 const gimbalState = reactive<GimbalState>({
   tilt: -12,
   pan: 0,
@@ -341,6 +342,8 @@ const telemetry = computed(() => [
 
 const headingLabel = computed(() => `${Math.round(flightState.heading).toString().padStart(3, '0')}°`)
 
+const headingDelta = computed(() => normalizeHeadingDelta(flightState.heading - initialHeading))
+
 const cameraViewOffset = computed(() => ({
   x: gimbalState.pan * -4.2,
   y: gimbalState.tilt * -3.1,
@@ -351,11 +354,15 @@ const horizonStyle = computed(() => ({
 }))
 
 const simWorldStyle = computed(() => ({
-  transform: `translate(${(-flightState.x * 0.35 + cameraViewOffset.value.x).toFixed(1)}px, ${(flightState.y * 0.22 + cameraViewOffset.value.y).toFixed(1)}px) rotate(${(flightState.yaw * -2).toFixed(1)}deg)`,
+  transform: `translate(${(-flightState.x * 0.35 + cameraViewOffset.value.x).toFixed(1)}px, ${(flightState.y * 0.22 + cameraViewOffset.value.y).toFixed(1)}px) rotate(${(-headingDelta.value).toFixed(1)}deg)`,
 }))
 
 const droneStyle = computed(() => ({
-  transform: `translate(${flightState.x.toFixed(1)}px, ${flightState.y.toFixed(1)}px) rotate(${roll.value.toFixed(1)}deg)`,
+  transform: `translate(${flightState.x.toFixed(1)}px, ${flightState.y.toFixed(1)}px) rotate(${headingDelta.value.toFixed(1)}deg)`,
+}))
+
+const flightVectorStyle = computed(() => ({
+  transform: `translate(-50%, -50%) rotate(${headingDelta.value.toFixed(1)}deg)`,
 }))
 
 const gimbalSightStyle = computed(() => ({
@@ -454,6 +461,10 @@ function normalizeHeading (value: number) {
   return (value + 360) % 360
 }
 
+function normalizeHeadingDelta (value: number) {
+  return ((value + 540) % 360) - 180
+}
+
 function isPressed (code: string) {
   return Boolean(pressedKeys[code])
 }
@@ -487,6 +498,18 @@ function applyMomentaryControl (code: string) {
   if (code === 'KeyN') {
     gimbalState.tilt = 0
     gimbalState.pan = 0
+  }
+  if (code === 'KeyA') {
+    flightState.heading = normalizeHeading(flightState.heading - 5)
+  }
+  if (code === 'KeyD') {
+    flightState.heading = normalizeHeading(flightState.heading + 5)
+  }
+  if (code === 'ArrowLeft') {
+    flightState.x = clamp(flightState.x - 6, -95, 95)
+  }
+  if (code === 'ArrowRight') {
+    flightState.x = clamp(flightState.x + 6, -95, 95)
   }
   if (code === 'KeyI') {
     gimbalState.tilt = clamp(gimbalState.tilt - 4, -90, 30)
@@ -1189,7 +1212,8 @@ button {
 
 .drone-avatar::before,
 .drone-avatar::after,
-.drone-avatar span {
+.drone-avatar span,
+.drone-avatar span::before {
   content: "";
   position: absolute;
   background: #e9fbff;
@@ -1219,6 +1243,20 @@ button {
   background: #72f2ff;
 }
 
+.drone-avatar span::before {
+  left: 50%;
+  top: -18px;
+  width: 0;
+  height: 0;
+  border-right: 6px solid transparent;
+  border-bottom: 12px solid #9dff7a;
+  border-left: 6px solid transparent;
+  background: transparent;
+  box-shadow: none;
+  filter: drop-shadow(0 0 8px rgba(157, 255, 122, 0.85));
+  transform: translateX(-50%);
+}
+
 .flight-vector {
   position: absolute;
   top: 50%;
@@ -1229,6 +1267,7 @@ button {
   border: 2px solid #72f2ff;
   border-radius: 50%;
   box-shadow: 0 0 22px rgba(114, 242, 255, 0.45);
+  transition: transform 0.08s linear;
 }
 
 .flight-vector::before,
