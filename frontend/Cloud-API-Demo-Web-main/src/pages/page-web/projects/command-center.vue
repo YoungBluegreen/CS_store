@@ -1,5 +1,21 @@
 <template>
-  <main class="command-center">
+  <main
+    class="command-center"
+    :class="[
+      `screen-${screenMode}`,
+      {
+        'night-mode': isNightMode,
+        'left-collapsed': leftCollapsed,
+        'right-collapsed': rightCollapsed,
+      },
+    ]"
+  >
+    <button class="collapse-toggle left" @click="leftCollapsed = !leftCollapsed">
+      {{ leftCollapsed ? '展开功能' : '收起功能' }}
+    </button>
+    <button class="collapse-toggle right" @click="rightCollapsed = !rightCollapsed">
+      {{ rightCollapsed ? '展开态势' : '收起态势' }}
+    </button>
     <aside class="module-rail">
       <button
         v-for="item in modules"
@@ -45,6 +61,35 @@
           <em :class="metric.tone">{{ metric.note }}</em>
         </div>
       </div>
+
+      <section class="doc-control-bar">
+        <div class="control-group">
+          <span>桌面大屏</span>
+          <button
+            v-for="mode in screenModes"
+            :key="mode.key"
+            :class="{ active: screenMode === mode.key }"
+            @click="screenMode = mode.key"
+          >
+            {{ mode.label }}
+          </button>
+        </div>
+        <div class="control-group">
+          <span>底图</span>
+          <button :class="{ active: baseLayer === 'vector' }" @click="setBaseLayer('vector')">矢量</button>
+          <button :class="{ active: baseLayer === 'satellite' }" @click="setBaseLayer('satellite')">卫星</button>
+        </div>
+        <div class="control-group">
+          <span>主题</span>
+          <button :class="{ active: !isNightMode }" @click="setDayNight(false)">日间</button>
+          <button :class="{ active: isNightMode }" @click="setDayNight(true)">夜间</button>
+        </div>
+        <div class="control-group collaborative">
+          <span>协同规划</span>
+          <button @click="syncCollaborativePlan">同步规划</button>
+          <em>{{ onlineUsers.length }} 人在线</em>
+        </div>
+      </section>
 
       <section class="module-detail">
         <div class="detail-head">
@@ -97,6 +142,36 @@
         </div>
         <div class="amap-wrap">
           <div ref="amapContainer" class="amap-container"></div>
+          <div class="map-hud top-left">
+            <strong>高德底图联动</strong>
+            <span>{{ baseLayer === 'vector' ? '矢量图层' : '卫星图层' }} / {{ isNightMode ? '夜间模式' : '日间模式' }}</span>
+          </div>
+          <div class="map-hud top-right">
+            <strong>多人协同</strong>
+            <div class="avatar-row">
+              <span v-for="user in onlineUsers" :key="user.name" :style="{ background: user.color }">{{ user.short }}</span>
+            </div>
+            <em>{{ collaborationStatus }}</em>
+          </div>
+          <div class="fpv-pad">
+            <div>
+              <strong>模拟 FPV 指令飞行</strong>
+              <span>{{ fpvStatus.mode }} · 高度 {{ fpvStatus.altitude }}m · 速度 {{ fpvStatus.speed }}m/s</span>
+              <span>空地协同：巡检机器狗 R1 在线 · 电量 82%</span>
+            </div>
+            <div class="fpv-grid">
+              <button @click="sendFpvCommand('上升')">升</button>
+              <button @click="sendFpvCommand('前进')">前</button>
+              <button @click="sendFpvCommand('下降')">降</button>
+              <button @click="sendFpvCommand('左转')">左</button>
+              <button class="primary" @click="sendFpvCommand('悬停')">停</button>
+              <button @click="sendFpvCommand('右转')">右</button>
+              <button @click="sendFpvCommand('机器狗前进')">犬进</button>
+              <button @click="sendFpvCommand('机器狗驻停')">犬停</button>
+              <button @click="sendFpvCommand('机器狗回传')">回传</button>
+            </div>
+            <p>{{ commandLog[0] }}</p>
+          </div>
           <div v-if="mapLoadError" class="map-error">
             <strong>高德地图加载失败</strong>
             <span>{{ mapLoadError }}</span>
@@ -185,7 +260,28 @@ const amapContainer = ref<HTMLDivElement | null>(null)
 const mapLoadError = ref('')
 const amapInstance = shallowRef<any>(null)
 const mapInstance = shallowRef<any>(null)
+const satelliteLayer = shallowRef<any>(null)
 const realtimeTimer = ref<number | null>(null)
+const leftCollapsed = ref(false)
+const rightCollapsed = ref(false)
+const isNightMode = ref(false)
+const baseLayer = ref<'vector' | 'satellite'>('vector')
+const screenMode = ref<'desktop' | 'wide' | 'control'>('desktop')
+const collaborationStatus = ref('规划锁空闲，等待同步')
+const fpvStatus = ref({ mode: '姿态控制', altitude: 120, speed: 8 })
+const commandLog = ref(['等待指令'])
+
+const screenModes = [
+  { key: 'desktop', label: '桌面' },
+  { key: 'wide', label: '宽屏' },
+  { key: 'control', label: '指挥' },
+] as const
+
+const onlineUsers = [
+  { name: 'adminPC', short: 'A', color: '#0d6fd6' },
+  { name: 'planner', short: 'P', color: '#19a35b' },
+  { name: 'operator', short: 'O', color: '#d46b08' },
+]
 
 const pathOf = (name: ERouterName) => '/' + name
 const taskCreatePath = '/' + ERouterName.TASK + '/' + ERouterName.CREATE_PLAN
@@ -618,6 +714,53 @@ const trackPath = [
 
 const currentModule = computed(() => moduleData[activeModule.value])
 
+function applyMapTheme () {
+  const AMap = amapInstance.value
+  const map = mapInstance.value
+  if (!AMap || !map) {
+    return
+  }
+
+  map.setMapStyle(isNightMode.value ? 'amap://styles/dark' : 'amap://styles/normal')
+
+  if (baseLayer.value === 'satellite') {
+    if (!satelliteLayer.value) {
+      satelliteLayer.value = new AMap.TileLayer.Satellite()
+    }
+    map.add(satelliteLayer.value)
+  } else if (satelliteLayer.value) {
+    map.remove(satelliteLayer.value)
+  }
+}
+
+function setBaseLayer (layer: 'vector' | 'satellite') {
+  baseLayer.value = layer
+  applyMapTheme()
+}
+
+function setDayNight (enabled: boolean) {
+  isNightMode.value = enabled
+  applyMapTheme()
+}
+
+function syncCollaborativePlan () {
+  collaborationStatus.value = `已同步 ${onlineUsers.length} 人规划视图 · ${new Date().toLocaleTimeString()}`
+}
+
+function sendFpvCommand (command: string) {
+  if (command === '上升') {
+    fpvStatus.value.altitude += 5
+  } else if (command === '下降') {
+    fpvStatus.value.altitude = Math.max(20, fpvStatus.value.altitude - 5)
+  } else if (command === '前进') {
+    fpvStatus.value.speed = Math.min(18, fpvStatus.value.speed + 1)
+  } else if (command === '悬停' || command.includes('驻停')) {
+    fpvStatus.value.speed = 0
+  }
+
+  commandLog.value = [`${new Date().toLocaleTimeString()} · ${command} 指令已下发`, ...commandLog.value].slice(0, 5)
+}
+
 function createLabelMarker (AMap: any, item: { name: string, position: number[] }, type: 'dock' | 'drone') {
   const marker = new AMap.Marker({
     position: item.position,
@@ -730,6 +873,7 @@ async function initAmap () {
     mapInstance.value = map
     map.addControl(new AMap.Scale())
     map.addControl(new AMap.ToolBar({ position: 'RB' }))
+    applyMapTheme()
     renderBusinessOverlays(AMap, map)
   } catch (error: any) {
     mapLoadError.value = error?.message || '请检查高德地图 Key、网络或域名白名单配置。'
@@ -784,6 +928,7 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .command-center {
+  position: relative;
   min-height: calc(100vh - 64px);
   display: grid;
   grid-template-columns: 148px minmax(680px, 1fr) 340px;
@@ -791,6 +936,71 @@ onBeforeUnmount(() => {
   padding: 16px;
   color: #17233d;
   background: #eef2f6;
+}
+
+.command-center.screen-wide {
+  grid-template-columns: 112px minmax(820px, 1fr) 280px;
+}
+
+.command-center.screen-control {
+  grid-template-columns: 88px minmax(940px, 1fr) 360px;
+}
+
+.command-center.left-collapsed {
+  grid-template-columns: 0 minmax(720px, 1fr) 340px;
+}
+
+.command-center.right-collapsed {
+  grid-template-columns: 148px minmax(760px, 1fr) 0;
+}
+
+.command-center.left-collapsed.right-collapsed {
+  grid-template-columns: 0 minmax(900px, 1fr) 0;
+}
+
+.command-center.night-mode {
+  color: #d9e7f7;
+  background: #101722;
+}
+
+.command-center.night-mode .workspace,
+.command-center.night-mode .panel,
+.command-center.night-mode .module-detail,
+.command-center.night-mode .module-rail {
+  border-color: #26384c;
+  background: #151f2b;
+}
+
+.collapse-toggle {
+  position: fixed;
+  z-index: 20;
+  top: 92px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid #b9d7f4;
+  border-radius: 6px;
+  color: #0d6fd6;
+  background: rgba(255, 255, 255, 0.94);
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(20, 35, 52, 0.12);
+}
+
+.collapse-toggle.left {
+  left: 18px;
+}
+
+.collapse-toggle.right {
+  right: 18px;
+}
+
+.left-collapsed .module-rail,
+.right-collapsed .inspector {
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  opacity: 0;
 }
 
 .module-rail,
@@ -943,6 +1153,61 @@ h1 {
   color: #2d8cf0;
 }
 
+.doc-control-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 10px;
+  border: 1px solid #dce8f4;
+  border-radius: 8px;
+  background: #f8fbfd;
+}
+
+.control-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 4px 6px;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.control-group span {
+  padding: 0 6px;
+  color: #63758a;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.control-group button,
+.robot-card button {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #d6e4f0;
+  border-radius: 6px;
+  color: #31506e;
+  background: #fff;
+  cursor: pointer;
+}
+
+.control-group button.active,
+.control-group button:hover,
+.robot-card button:hover {
+  color: #0d6fd6;
+  border-color: #86bfff;
+  background: #eaf4ff;
+}
+
+.control-group.collaborative em {
+  padding: 0 6px;
+  color: #19a35b;
+  font-size: 12px;
+  font-style: normal;
+}
+
 .module-detail {
   padding: 14px;
   margin-bottom: 14px;
@@ -1056,15 +1321,124 @@ h1 {
 
 .amap-wrap {
   position: relative;
-  min-height: 330px;
+  min-height: 430px;
   overflow: hidden;
   background: #dbe8ef;
 }
 
 .amap-container {
   width: 100%;
-  height: 420px;
-  min-height: 330px;
+  height: 520px;
+  min-height: 430px;
+}
+
+.screen-control .amap-container {
+  height: 620px;
+}
+
+.screen-wide .amap-container {
+  height: 560px;
+}
+
+.map-hud,
+.fpv-pad {
+  position: absolute;
+  z-index: 2;
+  border: 1px solid rgba(220, 232, 244, 0.9);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 14px 34px rgba(20, 35, 52, 0.18);
+  backdrop-filter: blur(8px);
+}
+
+.map-hud {
+  display: grid;
+  gap: 4px;
+  min-width: 168px;
+  padding: 10px 12px;
+}
+
+.map-hud.top-left {
+  top: 14px;
+  left: 14px;
+}
+
+.map-hud.top-right {
+  top: 14px;
+  right: 14px;
+}
+
+.map-hud strong,
+.fpv-pad strong,
+.robot-card strong {
+  color: #17233d;
+}
+
+.map-hud span,
+.map-hud em,
+.fpv-pad span,
+.fpv-pad p,
+.robot-card span {
+  color: #63758a;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.avatar-row {
+  display: flex;
+  gap: 6px;
+}
+
+.avatar-row span {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 700;
+}
+
+.fpv-pad {
+  left: 14px;
+  bottom: 14px;
+  width: 320px;
+  padding: 12px;
+}
+
+.fpv-pad > div:first-child {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.fpv-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.fpv-grid button {
+  height: 34px;
+  border: 1px solid #b9d7f4;
+  border-radius: 6px;
+  color: #0d6fd6;
+  background: #eaf4ff;
+  cursor: pointer;
+}
+
+.fpv-grid button.primary {
+  color: #fff;
+  border-color: #0d6fd6;
+  background: #0d6fd6;
+}
+
+.fpv-pad p {
+  margin: 10px 0 0;
+  padding: 8px;
+  border-radius: 6px;
+  background: #f3f7fb;
 }
 
 .map-error {
@@ -1182,6 +1556,44 @@ h1 {
 .notice-list p {
   margin: 0;
   line-height: 1.7;
+}
+
+.night-mode h1,
+.night-mode .detail-head strong,
+.night-mode .metric-card strong,
+.night-mode .capability-title strong,
+.night-mode .panel-head,
+.night-mode .map-hud strong,
+.night-mode .fpv-pad strong {
+  color: #e7f0fb;
+}
+
+.night-mode .metric-card,
+.night-mode .capability-card,
+.night-mode .backend-list div,
+.night-mode .doc-control-bar,
+.night-mode .control-group {
+  border-color: #26384c;
+  background: #1b2836;
+}
+
+.night-mode .map-hud,
+.night-mode .fpv-pad {
+  border-color: rgba(38, 56, 76, 0.92);
+  background: rgba(21, 31, 43, 0.9);
+}
+
+.night-mode .map-hud span,
+.night-mode .map-hud em,
+.night-mode .fpv-pad span,
+.night-mode .fpv-pad p,
+.night-mode .workspace-head p,
+.night-mode .control-group span {
+  color: #a7b8cb;
+}
+
+.night-mode .fpv-pad p {
+  background: #101722;
 }
 
 @media (max-width: 1360px) {
