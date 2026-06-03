@@ -1665,6 +1665,10 @@ button {
   text-align: center;
 }
 
+.sky-field.map-expanded .pitch-ladder {
+  display: none;
+}
+
 .pitch-ladder span,
 .pitch-ladder strong {
   width: 170px;
