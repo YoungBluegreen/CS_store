@@ -40,7 +40,7 @@
 
       <section class="hud-stage">
         <div class="sky-field">
-          <div class="horizon" :style="{ transform: `rotate(${roll}deg) translateY(${pitch}px)` }">
+          <div class="horizon" :style="horizonStyle">
             <div class="sky"></div>
             <div class="ground"></div>
           </div>
@@ -148,7 +148,7 @@
           </button>
         </div>
         <div class="gimbal-sight-preview">
-          <div class="gimbal-sight-title">云台姿态准星</div>
+          <div class="gimbal-sight-title">云台姿态准星 · 镜头视角</div>
           <div class="gimbal-sight-base">
             <div class="gimbal-sight-dot" :style="gimbalSightStyle"></div>
           </div>
@@ -341,8 +341,17 @@ const telemetry = computed(() => [
 
 const headingLabel = computed(() => `${Math.round(flightState.heading).toString().padStart(3, '0')}°`)
 
+const cameraViewOffset = computed(() => ({
+  x: gimbalState.pan * -4.2,
+  y: gimbalState.tilt * -3.1,
+}))
+
+const horizonStyle = computed(() => ({
+  transform: `rotate(${roll.value.toFixed(1)}deg) translateY(${(pitch.value + cameraViewOffset.value.y * 0.64).toFixed(1)}px)`,
+}))
+
 const simWorldStyle = computed(() => ({
-  transform: `translate(${(-flightState.x * 0.35).toFixed(1)}px, ${(flightState.y * 0.22).toFixed(1)}px) rotate(${(flightState.yaw * -2).toFixed(1)}deg)`,
+  transform: `translate(${(-flightState.x * 0.35 + cameraViewOffset.value.x).toFixed(1)}px, ${(flightState.y * 0.22 + cameraViewOffset.value.y).toFixed(1)}px) rotate(${(flightState.yaw * -2).toFixed(1)}deg)`,
 }))
 
 const droneStyle = computed(() => ({
@@ -852,8 +861,9 @@ button {
 
 .horizon {
   position: absolute;
-  inset: -25%;
-  transition: transform 0.45s ease;
+  inset: -34%;
+  transition: transform 0.16s ease-out;
+  will-change: transform;
 }
 
 .sky,
@@ -1076,8 +1086,10 @@ button {
 
 .sim-world {
   position: absolute;
-  inset: 0;
-  transition: transform 0.08s linear;
+  inset: -12%;
+  transform-origin: center;
+  transition: transform 0.16s ease-out;
+  will-change: transform;
 }
 
 .runway {
