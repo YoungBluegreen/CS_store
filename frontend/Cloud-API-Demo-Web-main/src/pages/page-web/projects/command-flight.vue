@@ -45,6 +45,34 @@
             <div class="ground"></div>
           </div>
           <div class="hud-grid"></div>
+          <div class="attitude-orb glass-panel">
+            <div class="orb-title">球形水平仪</div>
+            <div class="orb-body">
+              <div class="orb-ball" :style="attitudeBallStyle">
+                <div class="orb-sky"></div>
+                <div class="orb-ground"></div>
+              </div>
+              <div class="orb-cross"></div>
+              <div class="orb-aircraft"></div>
+            </div>
+            <div class="orb-meta">
+              <span>ROLL {{ Math.round(roll) }}°</span>
+              <span>PITCH {{ Math.round(-pitch) }}°</span>
+            </div>
+          </div>
+          <div class="overview-map glass-panel">
+            <div class="overview-head">
+              <strong>鸟瞰图</strong>
+              <span>MAP</span>
+            </div>
+            <div class="overview-body">
+              <div class="map-grid"></div>
+              <div class="map-route"></div>
+              <div class="map-home">H</div>
+              <div class="map-target">T</div>
+              <div class="map-drone" :style="mapDroneStyle"></div>
+            </div>
+          </div>
           <div class="sim-world" :style="simWorldStyle">
             <div class="runway"></div>
             <div class="terrain-line line-a"></div>
@@ -128,6 +156,33 @@
             <span>油门 {{ Math.round(flightState.throttle * 100) }}%</span>
           </div>
         </div>
+        <div class="gimbal-console">
+          <div class="keyboard-title">
+            <strong>云台 / 相机</strong>
+            <span>{{ cameraState.recording ? 'REC' : cameraState.mode }}</span>
+          </div>
+          <div class="gimbal-preview">
+            <div class="gimbal-reticle" :style="gimbalReticleStyle"></div>
+          </div>
+          <div class="camera-stats">
+            <div>
+              <span>俯仰</span>
+              <strong>{{ Math.round(gimbalState.tilt) }}°</strong>
+            </div>
+            <div>
+              <span>偏航</span>
+              <strong>{{ Math.round(gimbalState.pan) }}°</strong>
+            </div>
+            <div>
+              <span>变焦</span>
+              <strong>{{ cameraState.zoom.toFixed(1) }}x</strong>
+            </div>
+            <div>
+              <span>曝光</span>
+              <strong>{{ cameraState.ev > 0 ? '+' : '' }}{{ cameraState.ev.toFixed(1) }}</strong>
+            </div>
+          </div>
+        </div>
         <div class="keyboard-console">
           <div class="keyboard-title">
             <strong>键盘操纵</strong>
@@ -150,6 +205,15 @@
           <div class="key-row wide">
             <kbd :class="{ active: isPressed('Space') }">Space 悬停</kbd>
             <kbd :class="{ active: isPressed('KeyR') }">R 返航</kbd>
+          </div>
+          <div class="remote-map-list">
+            <section v-for="group in keyboardMapGroups" :key="group.title">
+              <strong>{{ group.title }}</strong>
+              <p v-for="item in group.items" :key="item.key">
+                <kbd :class="{ active: isPressed(item.code) }">{{ item.key }}</kbd>
+                <span>{{ item.action }}</span>
+              </p>
+            </section>
           </div>
         </div>
       </aside>
@@ -202,6 +266,29 @@ interface FlightState {
   yaw: number
 }
 
+interface GimbalState {
+  tilt: number
+  pan: number
+}
+
+interface CameraState {
+  mode: 'PHOTO' | 'VIDEO'
+  recording: boolean
+  zoom: number
+  ev: number
+}
+
+interface KeyboardMapItem {
+  key: string
+  code: string
+  action: string
+}
+
+interface KeyboardMapGroup {
+  title: string
+  items: KeyboardMapItem[]
+}
+
 const router = useRouter()
 const activeMode = ref('指令')
 const currentTime = ref('')
@@ -222,6 +309,22 @@ const flightState = reactive<FlightState>({
   y: 0,
   throttle: 0,
   yaw: 0,
+})
+const gimbalState = reactive<GimbalState>({
+  tilt: -12,
+  pan: 0,
+})
+const cameraState = reactive<CameraState>({
+  mode: 'VIDEO',
+  recording: false,
+  zoom: 1.0,
+  ev: 0,
+})
+const safetyState = reactive({
+  obstacleAvoidance: true,
+  auxLight: false,
+  mapView: false,
+  mode: 'N',
 })
 const commandLog = ref([
   { id: 1, time: '19:08:12', text: '控制权切换至云端座舱' },
@@ -251,6 +354,73 @@ const droneStyle = computed(() => ({
 const stickStyle = computed(() => ({
   transform: `translate(${(flightState.yaw * 52).toFixed(1)}px, ${(-flightState.throttle * 52).toFixed(1)}px)`,
 }))
+
+const attitudeBallStyle = computed(() => ({
+  transform: `rotate(${roll.value.toFixed(1)}deg) translateY(${pitch.value.toFixed(1)}px)`,
+}))
+
+const mapDroneStyle = computed(() => ({
+  transform: `translate(${(flightState.x * 0.54).toFixed(1)}px, ${(flightState.y * 0.42).toFixed(1)}px) rotate(${flightState.heading.toFixed(1)}deg)`,
+}))
+
+const gimbalReticleStyle = computed(() => ({
+  transform: `translate(${(gimbalState.pan * 0.55).toFixed(1)}px, ${(gimbalState.tilt * 0.45).toFixed(1)}px)`,
+}))
+
+const keyboardMapGroups: KeyboardMapGroup[] = [
+  {
+    title: '飞行摇杆',
+    items: [
+      { key: 'W', code: 'KeyW', action: '右杆前推：前进 / 加速' },
+      { key: 'S', code: 'KeyS', action: '右杆后拉：后退 / 减速' },
+      { key: 'A', code: 'KeyA', action: '左杆左打：左偏航' },
+      { key: 'D', code: 'KeyD', action: '左杆右打：右偏航' },
+      { key: '↑', code: 'ArrowUp', action: '左杆上推：上升' },
+      { key: '↓', code: 'ArrowDown', action: '左杆下拉：下降' },
+      { key: '←', code: 'ArrowLeft', action: '右杆左推：左平移' },
+      { key: '→', code: 'ArrowRight', action: '右杆右推：右平移' },
+    ],
+  },
+  {
+    title: '云台拨轮',
+    items: [
+      { key: 'I', code: 'KeyI', action: '云台上仰' },
+      { key: 'K', code: 'KeyK', action: '云台下俯' },
+      { key: 'J', code: 'KeyJ', action: '云台左转' },
+      { key: 'L', code: 'KeyL', action: '云台右转' },
+      { key: 'N', code: 'KeyN', action: '云台回中' },
+    ],
+  },
+  {
+    title: '拍摄控制',
+    items: [
+      { key: 'C', code: 'KeyC', action: '拍照 / 快门' },
+      { key: 'V', code: 'KeyV', action: '开始 / 停止录像' },
+      { key: 'B', code: 'KeyB', action: '照片 / 视频模式切换' },
+      { key: 'Z', code: 'KeyZ', action: '变焦缩小' },
+      { key: 'X', code: 'KeyX', action: '变焦放大' },
+      { key: 'Q', code: 'KeyQ', action: '曝光降低' },
+      { key: 'E', code: 'KeyE', action: '曝光提高' },
+    ],
+  },
+  {
+    title: '安全与功能键',
+    items: [
+      { key: 'Space', code: 'Space', action: '急停悬停 / Pause' },
+      { key: 'R', code: 'KeyR', action: '返航 RTH' },
+      { key: 'T', code: 'KeyT', action: '起飞 / 降落' },
+      { key: 'Esc', code: 'Escape', action: '紧急停止' },
+      { key: '1', code: 'Digit1', action: '普通挡 N' },
+      { key: '2', code: 'Digit2', action: '运动挡 S' },
+      { key: '3', code: 'Digit3', action: '平稳挡 C' },
+      { key: 'M', code: 'KeyM', action: '地图 / 相机视图切换' },
+      { key: 'P', code: 'KeyP', action: '避障开关' },
+      { key: 'G', code: 'KeyG', action: '补光灯开关' },
+      { key: 'F', code: 'KeyF', action: 'Fn 自定义功能' },
+      { key: 'H', code: 'KeyH', action: '刷新返航点' },
+    ],
+  },
+]
 
 const links = [
   { label: '图传链路', value: '18 Mbps', text: '良好', level: 'good' },
@@ -286,18 +456,7 @@ function isPressed (code: string) {
 }
 
 function isControlKey (code: string) {
-  return [
-    'KeyW',
-    'KeyA',
-    'KeyS',
-    'KeyD',
-    'ArrowUp',
-    'ArrowDown',
-    'ArrowLeft',
-    'ArrowRight',
-    'Space',
-    'KeyR',
-  ].includes(code)
+  return keyboardMapGroups.some(group => group.items.some(item => item.code === code))
 }
 
 function logKeyboardAction (text: string) {
@@ -311,17 +470,77 @@ function logKeyboardAction (text: string) {
 }
 
 function keyActionText (code: string) {
-  const actions: Record<string, string> = {
-    KeyW: 'W：加速前进',
-    KeyS: 'S：减速后退',
-    KeyA: 'A：左转偏航',
-    KeyD: 'D：右转偏航',
-    ArrowUp: '↑：升高',
-    ArrowDown: '↓：下降',
-    ArrowLeft: '←：左平移',
-    ArrowRight: '→：右平移',
+  const item = keyboardMapGroups.flatMap(group => group.items).find(entry => entry.code === code)
+  return item ? `${item.key}：${item.action}` : code
+}
+
+function applyMomentaryControl (code: string) {
+  if (code === 'KeyR') {
+    issueCommand('返航')
+    flightState.x = 0
+    flightState.y = 0
+    flightState.heading = 327
   }
-  return actions[code] || code
+  if (code === 'KeyN') {
+    gimbalState.tilt = 0
+    gimbalState.pan = 0
+  }
+  if (code === 'KeyC') {
+    logKeyboardAction(`相机快门：已拍摄 ${cameraState.zoom.toFixed(1)}x 照片`)
+  }
+  if (code === 'KeyV') {
+    cameraState.recording = !cameraState.recording
+    logKeyboardAction(cameraState.recording ? '录像开始' : '录像停止')
+  }
+  if (code === 'KeyB') {
+    cameraState.mode = cameraState.mode === 'PHOTO' ? 'VIDEO' : 'PHOTO'
+    logKeyboardAction(`相机模式切换为 ${cameraState.mode}`)
+  }
+  if (code === 'KeyZ') {
+    cameraState.zoom = clamp(cameraState.zoom - 0.2, 1, 7)
+  }
+  if (code === 'KeyX') {
+    cameraState.zoom = clamp(cameraState.zoom + 0.2, 1, 7)
+  }
+  if (code === 'KeyQ') {
+    cameraState.ev = clamp(cameraState.ev - 0.3, -3, 3)
+  }
+  if (code === 'KeyE') {
+    cameraState.ev = clamp(cameraState.ev + 0.3, -3, 3)
+  }
+  if (code === 'KeyT') {
+    const landing = flightState.altitude > 30
+    issueCommand(landing ? '降落' : '起飞')
+    flightState.altitude = landing ? 20 : 45
+  }
+  if (code === 'Escape') {
+    flightState.speed = 0
+    flightState.throttle = 0
+    logKeyboardAction('紧急停止：速度归零，保持悬停')
+  }
+  if (code === 'Digit1' || code === 'Digit2' || code === 'Digit3') {
+    safetyState.mode = code === 'Digit1' ? 'N' : code === 'Digit2' ? 'S' : 'C'
+    activeMode.value = code === 'Digit2' ? '运动' : code === 'Digit3' ? '平稳' : '指令'
+    logKeyboardAction(`飞行挡位切换：${safetyState.mode}`)
+  }
+  if (code === 'KeyM') {
+    safetyState.mapView = !safetyState.mapView
+    logKeyboardAction(safetyState.mapView ? '切换到地图鸟瞰主视角' : '切换到相机座舱主视角')
+  }
+  if (code === 'KeyP') {
+    safetyState.obstacleAvoidance = !safetyState.obstacleAvoidance
+    logKeyboardAction(safetyState.obstacleAvoidance ? '避障已开启' : '避障已关闭')
+  }
+  if (code === 'KeyG') {
+    safetyState.auxLight = !safetyState.auxLight
+    logKeyboardAction(safetyState.auxLight ? '补光灯已开启' : '补光灯已关闭')
+  }
+  if (code === 'KeyF') {
+    logKeyboardAction('Fn 自定义键：标记当前巡检画面')
+  }
+  if (code === 'KeyH') {
+    logKeyboardAction('返航点已刷新为当前机场位置')
+  }
 }
 
 function handleKeyDown (event: KeyboardEvent) {
@@ -333,18 +552,11 @@ function handleKeyDown (event: KeyboardEvent) {
   if (event.code === 'Space') {
     activeKeyLabel.value = 'Space：悬停刹停'
     if (!wasPressed) logKeyboardAction('键盘 Space：进入悬停刹停')
-  } else if (event.code === 'KeyR') {
-    activeKeyLabel.value = 'R：返航复位'
-    if (!wasPressed) {
-      issueCommand('返航')
-      flightState.x = 0
-      flightState.y = 0
-      flightState.heading = 327
-    }
   } else {
     activeKeyLabel.value = keyActionText(event.code)
     if (!wasPressed) {
       logKeyboardAction(`键盘 ${keyActionText(event.code)}`)
+      applyMomentaryControl(event.code)
     }
   }
 }
@@ -362,13 +574,18 @@ function updateSimulation () {
   const strafe = (isPressed('ArrowRight') ? 1 : 0) - (isPressed('ArrowLeft') ? 1 : 0)
   const lift = (isPressed('ArrowUp') ? 1 : 0) - (isPressed('ArrowDown') ? 1 : 0)
   const hover = isPressed('Space')
+  const gimbalTilt = (isPressed('KeyK') ? 1 : 0) - (isPressed('KeyI') ? 1 : 0)
+  const gimbalPan = (isPressed('KeyL') ? 1 : 0) - (isPressed('KeyJ') ? 1 : 0)
 
   flightState.throttle = throttle
   flightState.yaw = yaw
-  flightState.speed = clamp(flightState.speed + throttle * 0.22 - (hover ? 0.42 : 0), 0, 18)
+  const speedLimit = safetyState.mode === 'S' ? 24 : safetyState.mode === 'C' ? 10 : 18
+  flightState.speed = clamp(flightState.speed + throttle * 0.22 - (hover ? 0.42 : 0), 0, speedLimit)
   flightState.altitude = clamp(flightState.altitude + lift * 0.85, 20, 300)
-  flightState.heading = normalizeHeading(flightState.heading + yaw * 1.9)
+  flightState.heading = normalizeHeading(flightState.heading + yaw * (safetyState.mode === 'C' ? 1.1 : 1.9))
   flightState.battery = clamp(flightState.battery - Math.max(flightState.speed, 1) * 0.0009, 0, 100)
+  gimbalState.tilt = clamp(gimbalState.tilt + gimbalTilt * 1.4, -90, 30)
+  gimbalState.pan = clamp(gimbalState.pan + gimbalPan * 1.6, -90, 90)
 
   const headingRad = flightState.heading * Math.PI / 180
   flightState.x = clamp(flightState.x + Math.sin(headingRad) * flightState.speed * 0.06 + strafe * 1.2, -95, 95)
@@ -654,6 +871,201 @@ button {
     linear-gradient(90deg, rgba(96, 229, 255, 0.12) 1px, transparent 1px);
   background-size: 72px 72px;
   mask-image: radial-gradient(circle at center, #000 0 55%, transparent 78%);
+}
+
+.attitude-orb,
+.overview-map {
+  position: absolute;
+  top: 14px;
+  z-index: 5;
+}
+
+.attitude-orb {
+  left: 14px;
+  width: 158px;
+  padding: 10px;
+}
+
+.orb-title,
+.overview-head span {
+  color: rgba(223, 250, 255, 0.68);
+  font-size: 12px;
+}
+
+.orb-body {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  margin: 8px auto;
+  overflow: hidden;
+  border: 2px solid rgba(223, 250, 255, 0.68);
+  border-radius: 50%;
+  background: #07192e;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.54), 0 0 18px rgba(114, 242, 255, 0.24);
+}
+
+.orb-ball {
+  position: absolute;
+  inset: -34px;
+  transition: transform 0.08s linear;
+}
+
+.orb-sky,
+.orb-ground {
+  height: 50%;
+}
+
+.orb-sky {
+  background: linear-gradient(180deg, #17a0d6, #15497c);
+}
+
+.orb-ground {
+  background: linear-gradient(180deg, #8a6436, #4a321f);
+}
+
+.orb-cross::before,
+.orb-cross::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: rgba(255, 255, 255, 0.82);
+  transform: translate(-50%, -50%);
+}
+
+.orb-cross::before {
+  width: 86px;
+  height: 1px;
+}
+
+.orb-cross::after {
+  width: 1px;
+  height: 86px;
+}
+
+.orb-aircraft {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 58px;
+  height: 20px;
+  transform: translate(-50%, -50%);
+}
+
+.orb-aircraft::before,
+.orb-aircraft::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  width: 24px;
+  height: 3px;
+  background: #fff;
+}
+
+.orb-aircraft::before {
+  left: 0;
+}
+
+.orb-aircraft::after {
+  right: 0;
+}
+
+.orb-meta {
+  display: flex;
+  justify-content: space-between;
+  color: #62e6ff;
+  font-family: Consolas, monospace;
+  font-size: 11px;
+}
+
+.overview-map {
+  right: 14px;
+  width: 176px;
+  padding: 10px;
+}
+
+.overview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.overview-head strong {
+  color: #fff;
+}
+
+.overview-body {
+  position: relative;
+  height: 124px;
+  overflow: hidden;
+  border: 1px solid rgba(98, 230, 255, 0.2);
+  background:
+    radial-gradient(circle at 52% 46%, rgba(0, 216, 255, 0.16), transparent 36%),
+    rgba(3, 26, 48, 0.66);
+}
+
+.map-grid {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgba(98, 230, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(98, 230, 255, 0.12) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.map-route {
+  position: absolute;
+  left: 22px;
+  right: 28px;
+  top: 78px;
+  height: 2px;
+  background: #9dff7a;
+  transform: rotate(-28deg);
+  transform-origin: left;
+  box-shadow: 0 0 12px rgba(157, 255, 122, 0.6);
+}
+
+.map-home,
+.map-target,
+.map-drone {
+  position: absolute;
+  display: grid;
+  place-items: center;
+}
+
+.map-home,
+.map-target {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #061220;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.map-home {
+  left: 24px;
+  bottom: 22px;
+  background: #72f2ff;
+}
+
+.map-target {
+  right: 24px;
+  top: 24px;
+  background: #9dff7a;
+}
+
+.map-drone {
+  left: calc(50% - 8px);
+  top: calc(50% - 8px);
+  width: 0;
+  height: 0;
+  border-right: 8px solid transparent;
+  border-bottom: 16px solid #fff;
+  border-left: 8px solid transparent;
+  filter: drop-shadow(0 0 10px rgba(114, 242, 255, 0.82));
+  transition: transform 0.08s linear;
 }
 
 .sim-world {
@@ -1025,6 +1437,85 @@ button {
   background: rgba(0, 22, 43, 0.42);
 }
 
+.gimbal-console {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(76, 221, 255, 0.16);
+  background: rgba(0, 22, 43, 0.42);
+}
+
+.gimbal-preview {
+  position: relative;
+  height: 112px;
+  overflow: hidden;
+  border: 1px solid rgba(98, 230, 255, 0.22);
+  background:
+    linear-gradient(rgba(98, 230, 255, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(98, 230, 255, 0.14) 1px, transparent 1px),
+    rgba(3, 26, 48, 0.72);
+  background-size: 28px 28px;
+}
+
+.gimbal-preview::before,
+.gimbal-preview::after {
+  content: "";
+  position: absolute;
+  background: rgba(223, 250, 255, 0.34);
+}
+
+.gimbal-preview::before {
+  left: 50%;
+  top: 0;
+  width: 1px;
+  height: 100%;
+}
+
+.gimbal-preview::after {
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 1px;
+}
+
+.gimbal-reticle {
+  position: absolute;
+  left: calc(50% - 16px);
+  top: calc(50% - 16px);
+  width: 32px;
+  height: 32px;
+  border: 2px solid #72f2ff;
+  border-radius: 50%;
+  box-shadow: 0 0 16px rgba(114, 242, 255, 0.7);
+  transition: transform 0.08s linear;
+}
+
+.camera-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.camera-stats div {
+  min-height: 48px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid rgba(76, 221, 255, 0.16);
+  background: rgba(7, 33, 60, 0.5);
+}
+
+.camera-stats span {
+  color: rgba(223, 250, 255, 0.62);
+  font-size: 12px;
+}
+
+.camera-stats strong {
+  color: #fff;
+  font-family: Consolas, monospace;
+}
+
 .keyboard-title {
   display: flex;
   justify-content: space-between;
@@ -1054,6 +1545,38 @@ button {
 
 .key-row.wide {
   grid-template-columns: 1.5fr 1fr;
+}
+
+.remote-map-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.remote-map-list section {
+  display: grid;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(98, 230, 255, 0.14);
+}
+
+.remote-map-list section > strong {
+  color: #fff;
+  font-size: 13px;
+}
+
+.remote-map-list p {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: rgba(223, 250, 255, 0.7);
+  font-size: 12px;
+}
+
+.remote-map-list kbd {
+  min-height: 26px;
 }
 
 kbd {
@@ -1217,6 +1740,36 @@ kbd.active {
 }
 
 @media (max-width: 520px) {
+  .attitude-orb {
+    left: 8px;
+    width: 116px;
+    padding: 8px;
+  }
+
+  .overview-map {
+    right: 8px;
+    width: 124px;
+    padding: 8px;
+  }
+
+  .orb-body {
+    width: 76px;
+    height: 76px;
+    margin: 6px auto;
+  }
+
+  .orb-meta {
+    display: none;
+  }
+
+  .overview-body {
+    height: 84px;
+  }
+
+  .sim-readout {
+    top: 112px;
+  }
+
   .telemetry-grid,
   .command-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
