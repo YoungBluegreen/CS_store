@@ -147,13 +147,14 @@
             <span>{{ command.label }}</span>
           </button>
         </div>
-        <div class="stick-preview">
-          <div class="stick-base">
-            <div class="stick-dot" :style="stickStyle"></div>
+        <div class="gimbal-sight-preview">
+          <div class="gimbal-sight-title">云台姿态准星</div>
+          <div class="gimbal-sight-base">
+            <div class="gimbal-sight-dot" :style="gimbalSightStyle"></div>
           </div>
-          <div class="stick-labels">
-            <span>偏航 {{ Math.round(flightState.yaw * 15) }}°</span>
-            <span>油门 {{ Math.round(flightState.throttle * 100) }}%</span>
+          <div class="gimbal-sight-labels">
+            <span>偏航 {{ Math.round(gimbalState.pan) }}°</span>
+            <span>俯仰 {{ Math.round(gimbalState.tilt) }}°</span>
           </div>
         </div>
         <div class="gimbal-console">
@@ -348,8 +349,8 @@ const droneStyle = computed(() => ({
   transform: `translate(${flightState.x.toFixed(1)}px, ${flightState.y.toFixed(1)}px) rotate(${roll.value.toFixed(1)}deg)`,
 }))
 
-const stickStyle = computed(() => ({
-  transform: `translate(${(flightState.yaw * 52).toFixed(1)}px, ${(-flightState.throttle * 52).toFixed(1)}px)`,
+const gimbalSightStyle = computed(() => ({
+  transform: `translate(${(gimbalState.pan * 0.72).toFixed(1)}px, ${(gimbalState.tilt * 0.5).toFixed(1)}px)`,
 }))
 
 const attitudeBallStyle = computed(() => ({
@@ -477,6 +478,18 @@ function applyMomentaryControl (code: string) {
   if (code === 'KeyN') {
     gimbalState.tilt = 0
     gimbalState.pan = 0
+  }
+  if (code === 'KeyI') {
+    gimbalState.tilt = clamp(gimbalState.tilt - 4, -90, 30)
+  }
+  if (code === 'KeyK') {
+    gimbalState.tilt = clamp(gimbalState.tilt + 4, -90, 30)
+  }
+  if (code === 'KeyJ') {
+    gimbalState.pan = clamp(gimbalState.pan - 4, -60, 60)
+  }
+  if (code === 'KeyL') {
+    gimbalState.pan = clamp(gimbalState.pan + 4, -60, 60)
   }
   if (code === 'KeyC') {
     logKeyboardAction(`相机快门：已拍摄 ${cameraState.zoom.toFixed(1)}x 照片`)
@@ -1384,14 +1397,21 @@ button {
   background: rgba(165, 31, 46, 0.62);
 }
 
-.stick-preview {
+.gimbal-sight-preview {
   margin-top: 16px;
   padding: 14px;
   border: 1px solid rgba(76, 221, 255, 0.16);
   background: rgba(0, 22, 43, 0.42);
 }
 
-.stick-base {
+.gimbal-sight-title {
+  margin-bottom: 10px;
+  color: rgba(223, 250, 255, 0.76);
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.gimbal-sight-base {
   position: relative;
   width: 150px;
   height: 150px;
@@ -1399,11 +1419,12 @@ button {
   border: 1px solid rgba(98, 230, 255, 0.36);
   border-radius: 50%;
   background:
+    radial-gradient(circle at 50% 50%, rgba(98, 230, 255, 0.18), transparent 18%),
     linear-gradient(transparent 49%, rgba(98, 230, 255, 0.32) 50%, transparent 51%),
     linear-gradient(90deg, transparent 49%, rgba(98, 230, 255, 0.32) 50%, transparent 51%);
 }
 
-.stick-dot {
+.gimbal-sight-dot {
   position: absolute;
   top: 65px;
   left: 65px;
@@ -1415,7 +1436,7 @@ button {
   transition: transform 0.08s linear;
 }
 
-.stick-labels {
+.gimbal-sight-labels {
   display: flex;
   justify-content: space-between;
   margin-top: 12px;
