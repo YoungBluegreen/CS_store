@@ -604,10 +604,14 @@ onBeforeUnmount(() => {
   --workbench-panel: rgba(3, 24, 48, 0.72);
   --workbench-panel-strong: rgba(2, 22, 44, 0.84);
   --workbench-panel-soft: rgba(0, 20, 38, 0.5);
+  --workbench-panel-inner: rgba(0, 20, 38, 0.44);
   --workbench-border: rgba(0, 216, 255, 0.2);
   --workbench-border-strong: rgba(0, 216, 255, 0.34);
   --workbench-button: rgba(4, 42, 76, 0.58);
   --workbench-button-active: rgba(0, 142, 220, 0.58);
+  --workbench-card-active: rgba(0, 130, 210, 0.24);
+  --workbench-placeholder: rgba(189, 239, 255, 0.48);
+  --workbench-soft-shadow: inset 0 0 24px rgba(0, 170, 255, 0.08), 0 14px 38px rgba(0, 18, 38, 0.34);
   --workbench-map-overlay: linear-gradient(90deg, rgba(2, 14, 28, 0.76), rgba(2, 14, 28, 0.08) 24%, rgba(2, 14, 28, 0.08) 76%, rgba(2, 14, 28, 0.76)),
     linear-gradient(180deg, rgba(0, 50, 95, 0.36), transparent 30%, rgba(0, 18, 38, 0.5)),
     repeating-linear-gradient(90deg, rgba(0, 216, 255, 0.035) 0 1px, transparent 1px 72px);
@@ -616,21 +620,25 @@ onBeforeUnmount(() => {
 }
 
 .flight-workbench.day-mode {
-  --workbench-text: #17324a;
-  --workbench-title: #071b2d;
-  --workbench-muted: #4a6980;
-  --workbench-panel: rgba(255, 255, 255, 0.82);
-  --workbench-panel-strong: rgba(247, 252, 255, 0.9);
-  --workbench-panel-soft: rgba(235, 247, 255, 0.72);
-  --workbench-border: rgba(0, 125, 190, 0.24);
-  --workbench-border-strong: rgba(0, 125, 190, 0.36);
-  --workbench-button: rgba(235, 247, 255, 0.88);
-  --workbench-button-active: rgba(0, 130, 210, 0.18);
-  --workbench-map-overlay: linear-gradient(90deg, rgba(240, 248, 255, 0.76), rgba(240, 248, 255, 0.08) 22%, rgba(240, 248, 255, 0.08) 78%, rgba(240, 248, 255, 0.76)),
-    linear-gradient(180deg, rgba(239, 249, 255, 0.58), transparent 34%, rgba(235, 247, 255, 0.62)),
-    repeating-linear-gradient(90deg, rgba(0, 125, 190, 0.05) 0 1px, transparent 1px 72px);
+  --workbench-text: #193953;
+  --workbench-title: #082238;
+  --workbench-muted: #5b7488;
+  --workbench-panel: rgba(239, 248, 253, 0.84);
+  --workbench-panel-strong: rgba(231, 244, 251, 0.92);
+  --workbench-panel-soft: rgba(225, 239, 247, 0.78);
+  --workbench-panel-inner: rgba(214, 232, 243, 0.72);
+  --workbench-border: rgba(41, 142, 196, 0.22);
+  --workbench-border-strong: rgba(18, 126, 185, 0.32);
+  --workbench-button: rgba(226, 240, 248, 0.9);
+  --workbench-button-active: rgba(0, 132, 210, 0.22);
+  --workbench-card-active: rgba(0, 132, 210, 0.16);
+  --workbench-placeholder: rgba(76, 107, 128, 0.58);
+  --workbench-soft-shadow: inset 0 0 20px rgba(0, 132, 210, 0.05), 0 12px 30px rgba(82, 120, 148, 0.2);
+  --workbench-map-overlay: linear-gradient(90deg, rgba(224, 239, 248, 0.58), rgba(224, 239, 248, 0.05) 22%, rgba(224, 239, 248, 0.05) 78%, rgba(224, 239, 248, 0.58)),
+    linear-gradient(180deg, rgba(224, 239, 248, 0.36), transparent 36%, rgba(219, 235, 245, 0.42)),
+    repeating-linear-gradient(90deg, rgba(0, 125, 190, 0.035) 0 1px, transparent 1px 72px);
   color: var(--workbench-text);
-  background: #edf7ff;
+  background: #e6f1f8;
 }
 
 .map-canvas,
@@ -750,7 +758,8 @@ button {
   grid-template-columns: 1fr 56px;
   border: 1px solid var(--workbench-border);
   border-radius: 4px;
-  background: rgba(2, 34, 62, 0.66);
+  background: var(--workbench-panel-soft);
+  box-shadow: inset 0 0 14px rgba(0, 132, 210, 0.05);
 }
 
 .global-search input {
@@ -763,12 +772,12 @@ button {
 }
 
 .global-search input::placeholder {
-  color: rgba(189, 239, 255, 0.48);
+  color: var(--workbench-placeholder);
 }
 
 .global-search button {
   border: 0;
-  border-left: 1px solid rgba(0, 216, 255, 0.22);
+  border-left: 1px solid var(--workbench-border);
   border-radius: 0;
 }
 
@@ -818,7 +827,7 @@ button {
   border: 1px solid rgba(0, 216, 255, 0.2);
   border-color: var(--workbench-border);
   background: var(--workbench-panel);
-  box-shadow: inset 0 0 24px rgba(0, 170, 255, 0.08), 0 14px 38px rgba(0, 18, 38, 0.34);
+  box-shadow: var(--workbench-soft-shadow);
   backdrop-filter: blur(10px);
 }
 
@@ -919,7 +928,7 @@ button {
 
 .resource-list article.active {
   border-color: #00d8ff;
-  background: rgba(0, 130, 210, 0.24);
+  background: var(--workbench-card-active);
 }
 
 .resource-list strong,
@@ -1000,7 +1009,7 @@ button {
 }
 
 .map-status-strip span {
-  color: #d9f4ff;
+  color: var(--workbench-text);
 }
 
 .layer-toolbar {
@@ -1064,8 +1073,8 @@ button {
   align-content: center;
   gap: 4px;
   padding: 8px;
-  border: 1px solid rgba(0, 216, 255, 0.13);
-  background: rgba(0, 20, 38, 0.44);
+  border: 1px solid var(--workbench-border);
+  background: var(--workbench-panel-inner);
 }
 
 .object-meta span,
@@ -1096,7 +1105,7 @@ button {
 }
 
 .media-grid strong {
-  color: #fff;
+  color: var(--workbench-title);
   font-size: 12px;
 }
 
@@ -1154,7 +1163,7 @@ button {
 }
 
 .timeline-items em {
-  color: #d9f4ff;
+  color: var(--workbench-title);
   font-style: normal;
 }
 
