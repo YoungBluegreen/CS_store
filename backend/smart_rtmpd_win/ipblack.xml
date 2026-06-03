@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<ipblack>
+    <!-- TCP -->
+    <tcp>
+        <!-- IPv4 黑名单 -->
+        <ipv4>
+            <ip>192.168.23.230</ip>
+        </ipv4>
+        <!-- IPv6 黑名单 -->
+        <ipv6>
+        </ipv6>
+    </tcp>
+    <!-- UDP -->
+    <udp>
+        <!-- IPv4 黑名单 -->
+        <ipv4>
+        </ipv4>
+        <!-- IPv6 黑名单 -->
+        <ipv6>
+	</ipv6>
+    </udp>
+</ipblack>

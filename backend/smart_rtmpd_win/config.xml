@@ -1,0 +1,254 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<!-- 配置更改后，重启 rtmp 服务器 -->
+<config>
+    <!-- 跟踪耗时, 不要轻易打开, 容易 crash -->
+    <elapse>false</elapse>
+    <!-- 绑定 CPU, 单核处理能力弱不建议绑定 -->
+    <bindcpu>false</bindcpu>
+    <!-- 鉴权配置, 参考 web_dev.md 鉴权说明, 必 http 或 https 开头, 空表示不进行鉴权 -->
+    <authurl timeout="3000"></authurl>
+    <!-- rtp & rtcp port 端口区间, rtp que 接收队列最大缓冲 -->
+    <rtp min="30000" max="65535" que="20000" />
+    <!-- rtmp, rtsp, http(s) 均为 tcp; srt, rtp 均为 udp, 支持多端口映射, rtmp 是 !!!必配项!!! -->
+    <nat>
+        <!-- tcp 例如 eg: 118.145.6.103:1935, 如果是域名则 eg: www.qiyicc.com:1935 -->
+        <rtmp></rtmp>
+        <!-- tcp 例如 eg: 118.145.6.103:8554, 如果是域名则 eg: www.qiyicc.com:8554 -->
+        <rtsp></rtsp>
+        <!-- tcp 例如 eg: 118.145.6.103:8080, 如果是域名则 eg: www.qiyicc.com:8080 -->
+        <http></http>
+        <!-- tcp 例如 eg: 118.145.6.103:8181, 如果是域名则 eg: www.qiyicc.com:8181 -->
+        <https></https>
+        <!-- udp 例如 eg: 118.145.6.103:9000, 如果是域名则 eg: www.qiyicc.com:9000 -->
+        <srt></srt>
+        <!-- udp (gb28181) 例如 eg: 118.145.6.103:5060, 如果是域名则 eg: www.qiyicc.com:5060 -->
+        <sip></sip>
+        <!-- tcp (webrtc turn)例如 eg: 118.145.6.103:8888, 如果是域名则 eg: www.qiyicc.com:8888 -->
+        <turn></turn>
+        <!-- udp (rtsp udp server, webrtc stun/turn) 例如 eg: 118.145.6.103, udp map port range, see above rtp min & max -->
+        <rtp></rtp>
+    </nat>
+    <!-- 套结字基本配置项 -->
+    <sock>
+        <!-- 是否开启 IPv6, true 开启, false 关闭 -->
+        <ipv6>false</ipv6>
+        <!-- tcp 链接超时, default : 6s -->
+        <conntimeout>6</conntimeout>
+        <!-- socket 选项, 单位 KB, 0 表示不设置 -->
+        <sockrecv>16384</sockrecv>
+        <!-- socket 选项, 单位 KB, 0 表示不设置 -->
+        <socksend>16384</socksend>
+        <!-- udp mtu 大小区间 >208 ~ 1472 -->
+        <mtu>1472</mtu>
+        <!-- tcp send cache 单位 KB -->
+        <tcpsendcache>16384</tcpsendcache>
+        <!-- tcp recv cache 单位 KB -->
+        <tcprecvcache>2048</tcprecvcache>
+    </sock>
+    <!-- SSL 配置, 单项认证 serverkey, servercert 不为空; 双向认证主要用于平台互联  -->
+    <ssl>
+        <serverca></serverca>
+        <serverkey></serverkey>
+        <servercert></servercert>
+        <clientca></clientca>
+        <clientkey></clientkey>
+        <clientcert></clientcert>
+    </ssl>
+    <!-- 内存缓冲 -->
+    <memory>
+        <!-- min: 1~2048, mid: 1~1024, max: 1~64 -->
+        <send min="512" mid="64" max="8"/>
+        <!-- min: 1~2048, mid: 1~1024, max: 1~64 -->
+        <recv min="512" mid="64" max="8"/>
+    </memory>
+    <!-- RTMP 网络，CPU，内存相关 -->
+    <rtmp>
+        <!-- 服务器地址 -->
+        <ip></ip>
+        <!-- 服务器端口 -->
+        <port>1935</port>
+        <!-- 开启 ssl -->
+        <ssl>false</ssl>
+        <!-- 直播标签 -->
+        <live>live</live>
+        <!-- h265 的 CodecID -->
+        <codech265>12</codech265>
+        <!-- gop 队列最大大小,超过此值丢帧 0~240 -->
+        <gopquesize>60</gopquesize>
+        <!-- 秒开功能, 不过增加延时 -->
+        <gopenable>false</gopenable>
+        <!--　推流或拉流会话，最小空闲时间, 超时就断开, 0 表示不启用，单位：秒 -->
+        <maxidle>12</maxidle>
+        <!-- 平台互联选项: forward timeout 转发建立过程等待时间 -->
+        <fwdtimeout>5000</fwdtimeout>
+        <!-- chunksize 服务器端 chunksize 大小，默认 128 Byte　-->
+        <chunksize>60000</chunksize>
+        <!-- 如果日志出现 fwd swap 出现丢包, 加大此值, CPU 处理过慢或慢性队列堆积引起丢包, 单位：包的个数, 大小范围: 16~1024 -->
+        <swapsize>64</swapsize>
+        <!-- 如果日志出现 rtmp player或平台互联端丢包, 就要加大此值, 太大有延迟, 太小有丢包, 单位: 个数, 16~1024 -->
+        <shrinksize>64</shrinksize>
+        <!-- rtmp 转 rtsp rtp 负载类型定义 -->
+        <rtp h265="98" h264="96" aac="97"/>
+        <!-- rtmp 转 webrtc 编码定义 vcodec : h264, vp8; acodec : automatic adaptation( aac->opus, pcmu->pcmu, pcma->pcma ) -->
+        <webrtc vcodec="h264" acodec="auto"/>
+        <!-- 是否开启 http-flv 输出 -->
+        <hasflv>true</hasflv>
+        <!-- 是否开启 http-hls 输出 -->
+        <hashls>true</hashls>
+        <!-- 是否开启 http-dash 输出 -->
+        <hasdash>true</hasdash>
+        <!-- 是否开启 rtsp-live 输出 -->
+        <hasrtsp>true</hasrtsp>
+        <!-- 是否开启 srt-live 输出 -->
+        <hassrt>true</hassrt>
+    </rtmp>
+    <!-- wedbrtc 相关配置 ( liveshow, whip/whep ) -->
+    <!-- RTSP 服务器配置 -->
+    <rtsp>
+        <!-- 服务器地址 -->
+        <ip></ip>
+        <!-- 服务器端口 -->
+        <port>8554</port>
+        <!-- 开启 ssl -->
+        <ssl>false</ssl>
+        <!-- 关闭 rtsp 服务 -->
+        <enable>true</enable>
+        <!-- 是否开启 rtmp 输出 -->
+        <hasrtmp>true</hasrtmp>
+        <!-- 最小空闲时间, 超时就断开, 0 表示不启用 -->
+        <maxidle>12</maxidle>
+    </rtsp>
+    <!-- HTTP 服务器配置 -->
+    <http>
+        <!-- http ip 空表示绑定所有 ip -->
+        <ip></ip>
+        <!-- http 端口 -->
+        <port>1996</port>
+        <!-- https 端口, 必须 ssl 开启 -->
+        <sport>8181</sport>
+        <!-- 开启 ssl, 即 https -->
+        <ssl>false</ssl>
+        <!-- 关闭 http 服务, 最基本的服务建议不要关掉 -->
+        <enable>true</enable>
+        <!-- 最小空闲时间, 超时就断开, 0 表示不启用 -->
+        <maxidle>12</maxidle>
+        <!-- http 下载每次读取文件的数据大小, 默认每次读 8K 数据 -->
+        <httpchunk>8192</httpchunk>
+        <!-- http upload max body size, default: 64 M -->
+        <httpmaxbody>67108864</httpmaxbody>
+        <!-- hls, dash 等写磁盘过慢引起数据队列堆积包个数, 超过此值就丢包 0~512 -->
+        <ioshrink>64</ioshrink>
+        <!-- 如果日志提示 http-flv, ws-flv 出现丢包则扩大此值，太大增加延迟，太小有丢包，单位: KB -->
+        <flvblock>4096</flvblock>
+        <!-- html 目录下不允许下载文件扩展名, 逗号分割 -->
+        <denyfile>php,xml</denyfile>
+        <!-- html 目下下不允许访问的目录, 逗号分割. 比如: home,root -->
+        <denypath></denypath>
+        <!-- http-hls rec 模式缓存文件个数, 如出现音视频文件找不到,扩大这个值 -->
+        <hlsreccache>20</hlsreccache>
+        <!-- http-hls live 模式缓存文件个数, 如出现音视频丢帧,扩大这个值 -->
+        <hlslivecache>6</hlslivecache>
+        <!-- http-hls 切片个数, m3u8 内保存的条目 -->
+        <hlssegment>3</hlssegment>
+        <!-- http-hls 切片时长(秒), m3u8 内每个条目的时长 -->
+        <hlsduration>5</hlsduration>
+        <!-- dash rec 模式缓存文件个数, 如出现音视频文件找不到,扩大这个值 -->
+        <dashreccache>20</dashreccache>
+        <!-- dash live 模式缓存文件个数, 如出现音视频丢帧找不到,扩大这个值 -->
+        <dashlivecache>12</dashlivecache>
+        <!-- dash 缓存文件回收时长, 如果文件超过时长则回收, 最小 10 秒  -->
+        <dashduration>0</dashduration>
+        <!-- 录像模式 0: hls, 1: mp4, 2: dash -->
+        <recmode>0</recmode>
+        <!-- 录像文件时长, 多少分钟保存一段录像, 单位: 分钟 -->
+        <recduration>1</recduration>
+        <!-- 录像并行写的能力，如果是磁盘阵列或者多硬盘模式加速写 -->
+        <recparallel>
+            <path></path>
+            <path></path>
+         </recparallel>
+    </http>
+    <!-- SRT 服务器配置, linux 下的协程模式不支持 -->
+    <srt>
+        <!-- srt ip 空表示绑定所有 ip -->
+        <ip></ip>
+        <!-- srt 端口 -->
+        <port>9000</port>
+        <!-- 关闭 srt 服务 -->
+        <enable>true</enable>
+        <!-- 是否开启 rtmp 输出 -->
+        <hasrtmp>true</hasrtmp>
+        <!-- 最小空闲时间, 超时就断开, 0 表示不启用 -->
+        <maxidle>10</maxidle>
+        <!-- srt 转 rtmp 缓存包的个数 -->
+        <cache>4000</cache>
+    </srt>
+    <!-- im, webrtc 相关配置 ( liveshow, whip/whep ) -->
+    <rtc>
+        <!-- turn(tcp) 服务器地址 -->
+        <ip></ip>
+        <!-- turn(tcp) 服务器端口 -->
+        <port>8888</port>
+        <!-- 关闭 turn 服务 -->
+        <enable>true</enable>
+        <!-- 视频编码,优先级次序: h264,vp8,vp9,av1 -->
+        <vcodec>h264,vp8,vp9</vcodec>
+        <!-- 音频编码,优先级次序: opus,pcmu,pcma -->
+        <acodec>opus,pcmu,pcma</acodec>
+        <!-- 关键帧请求模式, 0 - PLI, 1 - FIR, 其它未定义 -->
+        <keyframemode>0</keyframemode>
+        <!-- 关键帧请求间隔, 单位: 秒, 设置过小带宽增加波动过大, 设置过大首画面可能打开时间过长 1~30 -->
+        <keyframeinterval>3</keyframeinterval>
+        <!-- 级联相关配置 -->
+        <host rtmp="" http=""/>
+        <host rtmp="" http=""/>
+    </rtc>
+    <!-- IMS(instance message service) 服务器配置, 文件上传, 下载, 中转  -->
+    <ims>
+        <!-- im ip 空表示帮定所有 ip -->
+        <ip></ip>
+        <!-- im tcp 端口 -->
+        <tcpport>6666</tcpport>
+        <!-- im udp 端口 -->
+        <udpport>6666</udpport>
+        <!-- 关闭 im 服务 -->
+        <enable>true</enable>
+        <!-- audio: opus; video: vp8, vp9 -->
+        <codec audio="opus" video="vp8"/>
+    </ims>
+    <!-- GB28181 配置 -->
+    <sip>
+        <!-- 模式 TCP, UDP -->
+        <mode>udp</mode>
+        <!-- 空表示绑定所有 ip -->
+        <ip></ip>
+        <!-- 端口 -->
+        <port>5060</port>
+        <!-- 关闭 sip 服务 -->
+        <enable>true</enable>
+        <!-- 开启 ssl -->
+        <ssl>false</ssl>
+        <!-- 是否开启 rtmp 输出 -->
+        <hasrtmp>true</hasrtmp>
+        <!-- 最小空闲时间, 超时就断开, 0 表示不启用 -->
+        <maxidle>12</maxidle>
+    </sip>
+    <!-- 集群管理端配置，中心调度配置项 -->
+    <center>
+        <!-- 本服务器标示 -->
+        <id></id>
+        <!-- 重连时间 -->
+        <reconnect>10</reconnect>
+        <!-- 心跳时间 -->
+        <heartbeat>180</heartbeat>
+        <!-- 中心服务器 URL, 比如: 192.168.1.1:8888-->
+        <url></url>
+        <!-- 对外服务的 RTMP, 比如: 192.168.1.1:1935 -->
+        <rtmp></rtmp>
+        <!-- 对外服务的 HTTP, 比如: 192.168.1.1:8080 -->
+        <http></http>
+    </center>
+    <!-- 日志相关 -->
+    <log>
+    </log>
+</config>

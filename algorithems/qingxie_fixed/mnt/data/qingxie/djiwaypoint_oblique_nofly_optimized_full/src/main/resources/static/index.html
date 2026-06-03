@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <title>航线文件与任务调度</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            height: 100vh;
+            overflow: hidden;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Arial, sans-serif;
+            color: #0f172a;
+            background: #f6f9fd;
+        }
+        button, input, select { font: inherit; }
+        button { cursor: pointer; }
+        .app { height: 100vh; display: flex; }
+        .sidebar {
+            width: 145px;
+            background: #fff;
+            border-right: 1px solid #dbe6f3;
+            padding: 14px 10px;
+        }
+        .nav-item {
+            height: 42px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 10px;
+            color: #334155;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .nav-item i { width: 16px; color: #475569; }
+        .nav-item.active { background: #e8f2ff; color: #0969da; font-weight: 600; }
+        .nav-item.active i { color: #1677ff; }
+        .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .toolbar {
+            height: 54px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            padding: 0 16px;
+            background: #fff;
+            border-bottom: 1px solid #dbe6f3;
+        }
+        .tool-btn, .primary-btn, .secondary-btn, .danger-btn {
+            height: 32px;
+            border-radius: 4px;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            color: #0f172a;
+            padding: 0 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            white-space: nowrap;
+        }
+        .primary-btn {
+            border-color: #1677ff;
+            background: #1677ff;
+            color: #fff;
+            font-weight: 600;
+        }
+        .secondary-btn { color: #1677ff; border-color: #91caff; background: #f0f7ff; }
+        .danger-btn { color: #b91c1c; border-color: #fecaca; background: #fff5f5; }
+        .content {
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+            padding: 18px 16px 22px;
+        }
+        .page-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 14px;
+        }
+        h1 { font-size: 24px; line-height: 1.2; margin-bottom: 7px; }
+        .subtitle { color: #52647a; font-size: 14px; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(160px, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .stat-card, .section {
+            background: #fff;
+            border: 1px solid #d7e3f2;
+            border-radius: 6px;
+        }
+        .stat-card {
+            height: 86px;
+            padding: 18px 14px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .stat-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: grid;
+            place-items: center;
+            color: #1677ff;
+            background: #eaf4ff;
+        }
+        .stat-label { color: #64748b; font-size: 13px; margin-bottom: 6px; }
+        .stat-value { font-size: 24px; font-weight: 800; color: #0f1f3d; }
+        .stat-tag { margin-left: auto; color: #16a34a; font-size: 12px; }
+        .section { padding: 14px; margin-bottom: 14px; }
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .section-title { font-size: 17px; font-weight: 800; }
+        .section-sub { color: #64748b; font-size: 13px; margin-top: 5px; }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(150px, 1fr));
+            gap: 12px;
+        }
+        .task-card {
+            min-height: 86px;
+            border: 1px solid #dbe6f3;
+            border-radius: 6px;
+            padding: 14px;
+            background: #fbfdff;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        .task-card .card-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            display: grid;
+            place-items: center;
+            color: #1677ff;
+            background: #eaf4ff;
+            flex: 0 0 auto;
+        }
+        .task-card h3 { font-size: 14px; margin-bottom: 7px; }
+        .task-card p { color: #64748b; font-size: 12px; line-height: 1.5; }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid #9be282;
+            background: #efffe8;
+            color: #389e0d;
+            border-radius: 3px;
+            padding: 1px 7px;
+            font-size: 12px;
+        }
+        .planner {
+            display: grid;
+            grid-template-columns: 370px minmax(420px, 1fr);
+            gap: 14px;
+            min-height: 560px;
+        }
+        .panel {
+            background: #fff;
+            border: 1px solid #d7e3f2;
+            border-radius: 6px;
+            padding: 14px;
+            min-width: 0;
+        }
+        .panel h2 {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+        .panel h2 i { color: #1677ff; }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        label { display: block; color: #64748b; font-size: 12px; margin-bottom: 5px; }
+        input, select {
+            width: 100%;
+            height: 34px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            padding: 0 9px;
+            background: #fff;
+            color: #0f172a;
+        }
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            margin: 10px 0;
+        }
+        .hint {
+            color: #64748b;
+            font-size: 12px;
+            line-height: 1.7;
+            padding: 10px 11px;
+            border-radius: 4px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+        }
+        .status-line {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+            color: #52647a;
+            font-size: 13px;
+        }
+        .mode-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #0958d9;
+            background: #eaf4ff;
+            border: 1px solid #91caff;
+            border-radius: 4px;
+            padding: 5px 9px;
+        }
+        #map {
+            width: 100%;
+            height: 505px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            overflow: hidden;
+            background: #eef4fb;
+        }
+        #json-output {
+            margin-top: 10px;
+            height: 170px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            border: 1px solid #dbe6f3;
+            border-radius: 4px;
+            padding: 10px;
+            background: #0f172a;
+            color: #d1e8ff;
+            font-size: 11px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
+        .task-list {
+            margin-top: 10px;
+            display: grid;
+            gap: 8px;
+        }
+        .task-row {
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 9px;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 12px;
+        }
+        .task-row strong { display: block; font-size: 13px; margin-bottom: 3px; }
+        .ok { color: #16a34a; }
+        .err { color: #dc2626; }
+        @media (max-width: 1100px) {
+            .stats, .cards { grid-template-columns: repeat(2, 1fr); }
+            .planner { grid-template-columns: 1fr; }
+            body { overflow: auto; }
+            .app { min-height: 100vh; height: auto; }
+            .content { overflow: visible; }
+        }
+        @media (max-width: 760px) {
+            .sidebar { display: none; }
+            .toolbar { justify-content: flex-start; overflow-x: auto; }
+            .stats, .cards, .form-grid, .btn-grid { grid-template-columns: 1fr; }
+            #map { height: 420px; }
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+        <div class="nav-item"><i class="fa-solid fa-network-wired"></i>设备管理</div>
+        <div class="nav-item"><i class="fa-solid fa-location-dot"></i>空域管理</div>
+        <div class="nav-item active"><i class="fa-solid fa-rocket"></i>航线任务</div>
+        <div class="nav-item"><i class="fa-regular fa-window-maximize"></i>实时监控</div>
+        <div class="nav-item"><i class="fa-regular fa-file-lines"></i>数据成果</div>
+        <div class="nav-item"><i class="fa-regular fa-circle-dot"></i>智能识别</div>
+    </aside>
+
+    <main class="main">
+        <div class="toolbar">
+            <button class="primary-btn"><i class="fa-solid fa-route"></i>航线库</button>
+            <button class="tool-btn" onclick="focusPlanner()"><i class="fa-solid fa-plus"></i>新建任务</button>
+            <button class="tool-btn" onclick="scrollToTasks()"><i class="fa-regular fa-chart-bar"></i>任务列表</button>
+        </div>
+
+        <div class="content">
+            <div class="page-head">
+                <div>
+                    <h1>航线文件与任务调度</h1>
+                    <div class="subtitle">后端已经覆盖 KMZ 航线、任务创建、任务列表、任务控制和媒体优先上传。面状航线已整合为任务创建能力。</div>
+                </div>
+            </div>
+
+            <section class="stats">
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fa-regular fa-rectangle-list"></i></div>
+                    <div><div class="stat-label">后端模块</div><div class="stat-value">5</div></div>
+                    <div class="stat-tag">Spring</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fa-regular fa-map"></i></div>
+                    <div><div class="stat-label">可跳转页面</div><div class="stat-value">11</div></div>
+                    <div class="stat-tag">已映射</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                    <div><div class="stat-label">接口能力</div><div class="stat-value">40+</div></div>
+                    <div class="stat-tag">可复用</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fa-solid fa-rocket"></i></div>
+                    <div><div class="stat-label">任务接口</div><div class="stat-value">8</div></div>
+                    <div class="stat-tag">核心链路</div>
+                </div>
+            </section>
+
+            <section class="section">
+                <div class="section-head">
+                    <div>
+                        <div class="section-title">航线任务二级页面</div>
+                        <div class="section-sub">按后端实际接口能力填充，按钮跳转到当前项目已有页面。</div>
+                    </div>
+                    <span class="pill">任务核心</span>
+                </div>
+                <div class="cards">
+                    <div class="task-card">
+                        <div class="card-icon"><i class="fa-regular fa-folder-open"></i></div>
+                        <div><h3>航线文件库 <span class="pill">已支持</span></h3><p>管理 KMZ 文件，支持正射、倾斜、面状航线导出结果入库。</p></div>
+                    </div>
+                    <div class="task-card">
+                        <div class="card-icon"><i class="fa-solid fa-plus"></i></div>
+                        <div><h3>任务创建 <span class="pill">已集成</span></h3><p>在同一模块内绘制面状区域、禁飞区并生成航线任务文件。</p></div>
+                    </div>
+                    <div class="task-card">
+                        <div class="card-icon"><i class="fa-solid fa-sliders"></i></div>
+                        <div><h3>任务控制 <span class="pill">已支持</span></h3><p>为后续机场/无人机下发、暂停、恢复和终止任务保留入口。</p></div>
+                    </div>
+                    <div class="task-card">
+                        <div class="card-icon"><i class="fa-solid fa-draw-polygon"></i></div>
+                        <div><h3>面状航线 <span class="pill">新增</span></h3><p>从绘制到 KMZ 下载使用同一个 `/generate-kmz` 后端链路。</p></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="planner" id="planner">
+                <div class="panel">
+                    <h2><i class="fa-solid fa-pen-ruler"></i>任务创建：面状航线</h2>
+                    <div class="form-grid">
+                        <div>
+                            <label for="task-name">任务名称</label>
+                            <input id="task-name" value="面状航线任务" />
+                        </div>
+                        <div>
+                            <label for="mission-type">任务类型</label>
+                            <select id="mission-type">
+                                <option value="ortho">正射航线</option>
+                                <option value="oblique">倾斜航线</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="flight-height">拍摄高度(m)</label>
+                            <input id="flight-height" type="number" min="20" max="500" value="100" />
+                        </div>
+                        <div>
+                            <label for="flight-speed">飞行速度(m/s)</label>
+                            <input id="flight-speed" type="number" min="1" max="20" value="10" />
+                        </div>
+                    </div>
+
+                    <div class="btn-grid">
+                        <button class="primary-btn" id="btn-coverage-start"><i class="fa-solid fa-draw-polygon"></i>绘制任务面</button>
+                        <button class="secondary-btn" id="btn-coverage-finish"><i class="fa-solid fa-check"></i>闭合任务面</button>
+                        <button class="secondary-btn" id="btn-nofly-start"><i class="fa-solid fa-ban"></i>绘制禁飞区</button>
+                        <button class="secondary-btn" id="btn-nofly-finish"><i class="fa-solid fa-check-double"></i>完成禁飞区</button>
+                        <button class="danger-btn" id="btn-clear"><i class="fa-regular fa-trash-can"></i>清空绘制</button>
+                        <button class="tool-btn" id="btn-save-task"><i class="fa-regular fa-floppy-disk"></i>保存任务</button>
+                    </div>
+
+                    <div class="btn-grid">
+                        <button class="primary-btn" id="btn-generate-selected"><i class="fa-solid fa-file-arrow-down"></i>生成当前 KMZ</button>
+                        <button class="tool-btn" id="btn-generate-ortho"><i class="fa-solid fa-camera"></i>正射 KMZ</button>
+                        <button class="tool-btn" id="btn-generate-oblique"><i class="fa-solid fa-cubes"></i>倾斜 KMZ</button>
+                    </div>
+
+                    <div class="hint">
+                        单击地图添加任务面顶点，闭合后可继续绘制多个禁飞区。前端绘制坐标为高德 GCJ-02，提交后端前会自动转换为 WGS84，并同时写入 `flightArea` 与 `coverageArea`。
+                    </div>
+
+                    <pre id="json-output">// 绘制完成后，这里会显示发给后端的任务 JSON</pre>
+                </div>
+
+                <div class="panel">
+                    <div class="status-line">
+                        <span class="mode-badge"><i class="fa-solid fa-circle-dot"></i><span id="mode-text">空闲</span></span>
+                        <span id="summary-text">任务面 0 点 · 禁飞区 0 个</span>
+                    </div>
+                    <div class="status-line">
+                        <span id="status-text">准备就绪：先绘制任务面，再根据需要绘制禁飞区。</span>
+                    </div>
+                    <div id="map"></div>
+                    <div class="task-list" id="task-list"></div>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<script src="https://webapi.amap.com/maps?v=2.0&key=7467c2d6ea1e0d777383bb71d0b2c8f1"></script>
+<script>
+    const PI = Math.PI;
+    const A = 6378245.0;
+    const EE = 0.00669342162296594323;
+
+    function outOfChina(lng, lat) {
+        return (lng < 72.004 || lng > 137.8347) || (lat < 0.8293 || lat > 55.8271);
+    }
+    function transformLat(x, y) {
+        let ret = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x));
+        ret += (20.0 * Math.sin(6.0 * x * PI) + 20.0 * Math.sin(2.0 * x * PI)) * 2.0 / 3.0;
+        ret += (20.0 * Math.sin(y * PI) + 40.0 * Math.sin(y / 3.0 * PI)) * 2.0 / 3.0;
+        ret += (160.0 * Math.sin(y / 12.0 * PI) + 320.0 * Math.sin(y * PI / 30.0)) * 2.0 / 3.0;
+        return ret;
+    }
+    function transformLng(x, y) {
+        let ret = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x));
+        ret += (20.0 * Math.sin(6.0 * x * PI) + 20.0 * Math.sin(2.0 * x * PI)) * 2.0 / 3.0;
+        ret += (20.0 * Math.sin(x * PI) + 40.0 * Math.sin(x / 3.0 * PI)) * 2.0 / 3.0;
+        ret += (150.0 * Math.sin(x / 12.0 * PI) + 300.0 * Math.sin(x / 30.0 * PI)) * 2.0 / 3.0;
+        return ret;
+    }
+    function delta(lng, lat) {
+        if (outOfChina(lng, lat)) return { lng: 0, lat: 0 };
+        let dLat = transformLat(lng - 105.0, lat - 35.0);
+        let dLng = transformLng(lng - 105.0, lat - 35.0);
+        const radLat = lat / 180.0 * PI;
+        let magic = Math.sin(radLat);
+        magic = 1 - EE * magic * magic;
+        const sqrtMagic = Math.sqrt(magic);
+        dLat = (dLat * 180.0) / ((A * (1 - EE)) / (magic * sqrtMagic) * PI);
+        dLng = (dLng * 180.0) / (A / sqrtMagic * Math.cos(radLat) * PI);
+        return { lng: dLng, lat: dLat };
+    }
+    function gcj02ToWgs84(lng, lat) {
+        if (outOfChina(lng, lat)) return { lng, lat };
+        const d = delta(lng, lat);
+        return { lng: lng - d.lng, lat: lat - d.lat };
+    }
+
+    let map;
+    let drawMode = null;
+    let coveragePath = [];
+    let coveragePolygon = null;
+    let currentNoFlyPath = [];
+    let currentNoFlyPreview = null;
+    let noFlyAreas = [];
+    let noFlyPolygons = [];
+    let savedTasks = [];
+
+    const els = {};
+
+    function focusPlanner() {
+        document.getElementById("planner").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    function scrollToTasks() {
+        document.getElementById("task-list").scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    function setStatus(message, kind) {
+        els.status.textContent = message;
+        els.status.className = kind === "error" ? "err" : (kind === "success" ? "ok" : "");
+    }
+    function updateMode() {
+        const text = drawMode === "coverage" ? "绘制任务面" : (drawMode === "nofly" ? "绘制禁飞区" : "空闲");
+        els.mode.textContent = text;
+    }
+    function updateSummary() {
+        els.summary.textContent = `任务面 ${coveragePath.length} 点 · 禁飞区 ${noFlyAreas.length} 个`;
+    }
+    function pathGcjToWgs(path) {
+        return path.map(p => {
+            const w = gcj02ToWgs84(p[0], p[1]);
+            return { longitude: w.lng, latitude: w.lat, lng: w.lng, lat: w.lat };
+        });
+    }
+    function areasGcjToWgs(areas) {
+        return areas.map(area => pathGcjToWgs(area));
+    }
+    function currentMissionType() {
+        return document.getElementById("mission-type").value || "ortho";
+    }
+    function taskName() {
+        return document.getElementById("task-name").value.trim() || "面状航线任务";
+    }
+    function buildPayload(missionType = currentMissionType()) {
+        const flightArea = pathGcjToWgs(coveragePath);
+        const noFly = areasGcjToWgs(noFlyAreas);
+        return {
+            taskName: taskName(),
+            missionType,
+            flightArea,
+            coverageArea: flightArea,
+            noFlyAreas: noFly,
+            globalShootHeight: Number(document.getElementById("flight-height").value) || 100,
+            obliqueGimbalPitch: -45,
+            autoFlightSpeed: Number(document.getElementById("flight-speed").value) || 10,
+            device: { domain: 0, type: 77, subType: 0 },
+            payload: { payloadEnumValue: 68, payloadSubEnumValue: 0, payloadPositionIndex: 0 }
+        };
+    }
+    function refreshJsonOutput() {
+        if (coveragePath.length === 0 && noFlyAreas.length === 0) {
+            els.json.textContent = "// 绘制完成后，这里会显示发给后端的任务 JSON";
+            return;
+        }
+        els.json.textContent = JSON.stringify(buildPayload(), null, 2);
+    }
+    function pointInPolygon(point, vs) {
+        const x = point[0], y = point[1];
+        let inside = false;
+        if (!vs || vs.length < 3) return false;
+        for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+            const xi = vs[i][0], yi = vs[i][1];
+            const xj = vs[j][0], yj = vs[j][1];
+            if (yj === yi) continue;
+            const intersect = ((yi > y) !== (yj > y)) && (x < ((xj - xi) * (y - yi)) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
+    function polygonContainsPolygon(inner, outer) {
+        return inner && inner.length > 0 && inner.every(p => pointInPolygon(p, outer));
+    }
+    function redrawCoveragePolygon() {
+        if (!map) return;
+        if (coveragePolygon) {
+            coveragePolygon.off("click");
+            map.remove(coveragePolygon);
+            coveragePolygon = null;
+        }
+        if (coveragePath.length < 2) return;
+        const outer = coveragePath.slice();
+        const holes = [];
+        noFlyAreas.forEach(area => {
+            if (area && area.length >= 3 && polygonContainsPolygon(area, outer)) holes.push(area);
+        });
+        coveragePolygon = new AMap.Polygon({
+            path: [outer].concat(holes),
+            strokeColor: "#1677ff",
+            strokeWeight: 3,
+            strokeOpacity: 0.95,
+            fillColor: "#1677ff",
+            fillOpacity: 0.18,
+            bubble: true
+        });
+        map.add(coveragePolygon);
+        coveragePolygon.on("click", e => handleDrawPoint(e.lnglat.lng, e.lnglat.lat));
+    }
+    function redrawNoFlyPreview() {
+        if (!map) return;
+        if (currentNoFlyPreview) {
+            map.remove(currentNoFlyPreview);
+            currentNoFlyPreview = null;
+        }
+        if (currentNoFlyPath.length === 0) return;
+        currentNoFlyPreview = new AMap.Polygon({
+            path: currentNoFlyPath,
+            strokeColor: "#f97316",
+            strokeWeight: 2,
+            fillColor: "#f97316",
+            fillOpacity: 0.25,
+            strokeDasharray: [6, 6],
+            bubble: true
+        });
+        map.add(currentNoFlyPreview);
+    }
+    function handleDrawPoint(lng, lat) {
+        if (!drawMode) return;
+        const point = [lng, lat];
+        if (drawMode === "coverage") {
+            coveragePath.push(point);
+            redrawCoveragePolygon();
+        } else if (drawMode === "nofly") {
+            currentNoFlyPath.push(point);
+            redrawNoFlyPreview();
+        }
+        updateSummary();
+        refreshJsonOutput();
+    }
+    function startDrawCoverage() {
+        drawMode = "coverage";
+        coveragePath = [];
+        noFlyAreas = [];
+        noFlyPolygons.forEach(poly => map.remove(poly));
+        noFlyPolygons = [];
+        if (coveragePolygon) map.remove(coveragePolygon);
+        if (currentNoFlyPreview) map.remove(currentNoFlyPreview);
+        currentNoFlyPath = [];
+        updateMode();
+        updateSummary();
+        refreshJsonOutput();
+        setStatus("正在绘制任务面：单击地图添加顶点，完成后点击闭合任务面。");
+    }
+    function finishCoverage() {
+        if (coveragePath.length < 3) {
+            alert("任务面至少需要 3 个点。");
+            return;
+        }
+        const first = coveragePath[0];
+        const last = coveragePath[coveragePath.length - 1];
+        if (first[0] !== last[0] || first[1] !== last[1]) coveragePath.push([first[0], first[1]]);
+        redrawCoveragePolygon();
+        drawMode = null;
+        updateMode();
+        updateSummary();
+        refreshJsonOutput();
+        setStatus("任务面已闭合，可继续绘制禁飞区或生成 KMZ。", "success");
+    }
+    function startDrawNoFly() {
+        if (coveragePath.length < 3) {
+            alert("请先绘制并闭合任务面。");
+            return;
+        }
+        drawMode = "nofly";
+        currentNoFlyPath = [];
+        if (currentNoFlyPreview) map.remove(currentNoFlyPreview);
+        updateMode();
+        setStatus("正在绘制禁飞区：单击地图添加顶点，完成后点击完成禁飞区。");
+    }
+    function finishCurrentNoFly() {
+        if (currentNoFlyPath.length < 3) {
+            alert("禁飞区至少需要 3 个点。");
+            return;
+        }
+        const first = currentNoFlyPath[0];
+        const last = currentNoFlyPath[currentNoFlyPath.length - 1];
+        if (first[0] !== last[0] || first[1] !== last[1]) currentNoFlyPath.push([first[0], first[1]]);
+        if (currentNoFlyPreview) map.remove(currentNoFlyPreview);
+        const poly = new AMap.Polygon({
+            path: currentNoFlyPath,
+            strokeColor: "#f97316",
+            strokeWeight: 2,
+            fillColor: "#dc2626",
+            fillOpacity: 0.32,
+            bubble: true
+        });
+        map.add(poly);
+        noFlyPolygons.push(poly);
+        noFlyAreas.push(currentNoFlyPath.slice());
+        currentNoFlyPath = [];
+        drawMode = null;
+        redrawCoveragePolygon();
+        updateMode();
+        updateSummary();
+        refreshJsonOutput();
+        setStatus("禁飞区已加入任务面挖孔计算。", "success");
+    }
+    function clearAll() {
+        if (coveragePolygon) map.remove(coveragePolygon);
+        if (currentNoFlyPreview) map.remove(currentNoFlyPreview);
+        noFlyPolygons.forEach(poly => map.remove(poly));
+        coveragePath = [];
+        currentNoFlyPath = [];
+        noFlyAreas = [];
+        noFlyPolygons = [];
+        coveragePolygon = null;
+        currentNoFlyPreview = null;
+        drawMode = null;
+        updateMode();
+        updateSummary();
+        refreshJsonOutput();
+        setStatus("已清空当前绘制内容。");
+    }
+    function saveTask() {
+        if (coveragePath.length < 3) {
+            alert("请先绘制并闭合任务面。");
+            return;
+        }
+        savedTasks.unshift({
+            name: taskName(),
+            type: currentMissionType() === "oblique" ? "倾斜" : "正射",
+            points: coveragePath.length,
+            noFly: noFlyAreas.length,
+            time: new Date().toLocaleString()
+        });
+        renderTasks();
+        setStatus("任务已保存到当前任务列表。", "success");
+    }
+    function renderTasks() {
+        const box = document.getElementById("task-list");
+        if (savedTasks.length === 0) {
+            box.innerHTML = "";
+            return;
+        }
+        box.innerHTML = savedTasks.map(t => `
+            <div class="task-row">
+                <div>
+                    <strong>${escapeHtml(t.name)}</strong>
+                    <span>${t.type} · 任务面 ${t.points} 点 · 禁飞区 ${t.noFly} 个</span>
+                </div>
+                <span>${t.time}</span>
+            </div>
+        `).join("");
+    }
+    function escapeHtml(value) {
+        return value.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+    }
+    async function generateKMZ(missionType = currentMissionType()) {
+        const payload = buildPayload(missionType);
+        if (payload.flightArea.length < 3) {
+            alert("请先绘制并闭合任务面。");
+            return;
+        }
+        setStatus(`正在生成${missionType === "oblique" ? "倾斜" : "正射"} KMZ...`);
+        try {
+            const response = await fetch("/generate-kmz", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) {
+                const text = await response.text().catch(() => "");
+                throw new Error(text || `HTTP ${response.status}`);
+            }
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = missionType === "oblique" ? "area_oblique_mission.kmz" : "area_ortho_mission.kmz";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            setStatus("KMZ 已生成并开始下载。", "success");
+            saveTask();
+        } catch (err) {
+            console.error(err);
+            setStatus("生成 KMZ 失败：" + err.message, "error");
+            alert("生成 KMZ 失败：" + err.message);
+        }
+    }
+    function init() {
+        els.mode = document.getElementById("mode-text");
+        els.status = document.getElementById("status-text");
+        els.summary = document.getElementById("summary-text");
+        els.json = document.getElementById("json-output");
+
+        map = new AMap.Map("map", {
+            zoom: 16,
+            center: [116.397428, 39.90923],
+            viewMode: "2D",
+            pitch: 0
+        });
+        map.on("click", e => handleDrawPoint(e.lnglat.lng, e.lnglat.lat));
+
+        document.getElementById("btn-coverage-start").addEventListener("click", startDrawCoverage);
+        document.getElementById("btn-coverage-finish").addEventListener("click", finishCoverage);
+        document.getElementById("btn-nofly-start").addEventListener("click", startDrawNoFly);
+        document.getElementById("btn-nofly-finish").addEventListener("click", finishCurrentNoFly);
+        document.getElementById("btn-clear").addEventListener("click", clearAll);
+        document.getElementById("btn-save-task").addEventListener("click", saveTask);
+        document.getElementById("btn-generate-selected").addEventListener("click", () => generateKMZ());
+        document.getElementById("btn-generate-ortho").addEventListener("click", () => generateKMZ("ortho"));
+        document.getElementById("btn-generate-oblique").addEventListener("click", () => generateKMZ("oblique"));
+        document.getElementById("mission-type").addEventListener("change", refreshJsonOutput);
+        document.getElementById("flight-height").addEventListener("input", refreshJsonOutput);
+        document.getElementById("flight-speed").addEventListener("input", refreshJsonOutput);
+
+        updateMode();
+        updateSummary();
+        refreshJsonOutput();
+    }
+    window.onload = init;
+</script>
+</body>
+</html>

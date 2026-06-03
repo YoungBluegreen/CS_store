@@ -1,0 +1,1438 @@
+﻿<html>
+  <head>
+      <!-- disable download favicon.ico -->
+      <link rel="icon" href="data:;base64,=">
+      <!-- 适应不同的屏幕 --->
+      <style type="text/css">
+        /*** 登录界面样式表定义 ***/
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        html {
+            height: 100%;
+        }
+        .loginForm {
+            height: 100%;
+            background-image: linear-gradient(to right, #090909, #a6c1ee);
+        }
+        .loginWrapper {
+            background-color: #fff;
+            width: 358px;
+            height: 588px;
+            border-radius: 15px;
+            padding: 0 50px;
+            position: relative;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .loginHeader {
+            font-size: 38px;
+            font-weight: bold;
+            text-align: center;
+            line-height: 200px;
+        }
+        .loginInputItem {
+            display: block;
+            width: 100%;
+            margin-bottom: 20px;
+            border: 0;
+            padding: 10px;
+            border-bottom: 1px solid rgb(128, 125, 125);
+            font-size: 15px;
+            outline: none;
+        }
+        .loginInputItem:placeholder {
+            text-transform: uppercase;
+        }
+        .loginButton {
+            display: block;
+            text-align: center;
+            padding: 10px;
+            width: 100%;
+            margin-top: 40px;
+            background-image: linear-gradient(to right, #0fff0f, #0f8f0f);
+            color: #fff;
+        }
+        /*** 主界面样式表定义 ***/
+        .clear { 
+            clear: both; 
+        }
+        .mainForm {
+            width: 100%;
+            height: 100%;
+        }
+        .titleLable {
+            margin-top: 20px;
+            font-size:20px;
+            color: #444;
+        }
+        .screenContainer {
+            width:1280;
+            height:720;
+            background-color:#2d3436;
+        }
+        .videoContainer {
+            width:240;
+            height:160;
+            background-color:#2d3436;
+        }
+        .audioContainer {
+            display: none;
+        }
+        .chatMessage {
+            width:240px;
+            height:224px;
+            color: #666;
+            border:0;
+            background-color:rgba(241,241,241,.98);
+        }
+        .chatInput {
+            width: 240px;
+            height: 30px;
+            display: flex; 
+            color: #666;
+            border:0;
+            background-color:rgba(241,241,241,.98);
+            margin-bottom:2px;
+        }
+        .inputLable{ 
+            width: 236px;
+            display: flex; 
+            color: #666;
+            margin : 1px 4px 4px 4px; 
+        }
+        .inputLable1{ 
+            width: 480px;
+            display: flex; 
+            color: #666; 
+        }
+        .inputLable input{ 
+            width: 100%; 
+            height: 24px; 
+        }
+        .buttonLeft{ 
+            width: 60px; 
+            height: 28px; 
+            border:  none;
+            float: left; 
+            color: #2d3436; 
+            margin: 1px 4px 4px 0px;
+            background-color:#00cec9;
+        }
+        .buttonRight{ 
+            width: 100px; 
+            height: 28px; 
+            border: none;
+            float: right; 
+            color: #2d3436;
+            margin: 1px 0px 4px 0px;
+            background-color:#6c5ce7;
+        }
+        .groupVideoMain {
+            margin: auto;
+            width:1530px;
+            height:724px;
+            background:#74b9ff; 
+        }
+        .groupVideoLef {
+            float: left;
+            margin: 2px 2px;
+        }
+        .groupVideoRight {
+            float: left;
+            margin: 2px 0px;
+        }
+        .groupVideoPanel {
+            margin-top:2px;
+        }
+        .groupChatPanel {
+            margin-top: 32px;
+            margin-left: 2px;
+            display: inline-block;
+        }
+        .showTitle {
+            font-size: 14px;
+            background-color:#00cec9;
+        }
+        .chatTitle {
+            font-size: 14px;
+            background-color:#fdcb6e;
+        }
+        @media screen and (orientation: portrait) {
+            html{
+                width : 100vmin;
+                height : 100vmax;
+            }
+            body{
+                width : 100vmin;
+                height : 100vmax;
+            }
+            #gyroContain{
+                width : 100vmax;
+                height : 100vmin;
+                transform-origin: top left;
+                transform: rotate(90deg) translate(0,-100vmin);
+            }
+          }
+        @media screen and (orientation: landscape) {
+            html{
+                width : 100vmax;
+                height : 100vmin;
+            }
+            body{
+                width : 100vmax;
+                height : 100vmin;
+            }
+            #gyroContain{
+                width : 100vmax;
+                height : 100vmin;
+            }
+        }
+      </style>
+  </head>
+  <body>
+    <!-- 手机端强制横屏 -->
+    <div id="gyroContain">
+    <div id="login-form" class="loginForm">
+        <div class="loginWrapper">
+            <div class="loginHeader">LiveShow</div>
+            <input id="login-name" class="loginInputItem" type="text" name="username" placeholder="用户名"  value="freeabc">
+            <input id="login-meeting" class="loginInputItem" type="text" name="meeting" placeholder="会议号" value="meeting">
+            <input id="login-passwd" class="loginInputItem" type="password" name="password" placeholder="密码" value="123456">
+            <div style="display:flex;flex-direction=row;justify-content:space-between;">
+                <div style="flex-direction=row;float:left;">
+                    <input id="login-create" type="checkbox" style="float:left;margin: 4px 6px 4px 0px;">创建会议</input>
+                </div>
+                <div style="flex-direction=row;float:right;">
+                    <input id="login-man" type="radio" name="sex" style="margin-right: 4px;" checked=true>男生</input>
+                    <input id="login-woman" type="radio" name="sex" style="margin-left: 4px;margin-right: 4px;">女生</input>
+                </div>
+            </div>
+            <div style="display:flex;justify-content:center;">
+                <div class="loginButton" onclick="login()">登录</div>
+            </div>
+        </div>
+    </div>
+    <div id="main-form" class="mainForm">
+        <div class="clear"></div>
+        <div class="groupVideoMain" style="margin-top:12px;">
+            <!-- 屏幕窗口 -->
+            <div class="groupVideoLef">
+                <video id="screenvideo" class="screenContainer" autoplay controls>
+                    <audio id="screenaudio" class="audioContainer" autoplay/>
+                </video>
+            </div>
+            <!-- 其它窗口 -->
+            <div class="groupVideoRight">
+                <!-- 视频窗口区 -->
+                <div id="group-video-panel" class="groupVideoPanel">
+                    <div class="roomVideoDiv" style="margin: 0px 4px 0px 2px;">
+                        <div class="showTitle">
+                            <label id="show1label" style="margin: 2px 2px 4px 4px;color:#666;">窗口1</label>
+                        </div>
+                        <video id="show1video" class="videoContainer" autoplay controls>
+                            <audio id="show1audio" class="audioContainer" autoplay/>
+                        </video>
+                    </div>
+                    <div class="roomVideoDiv" style="margin: 0px 4px 0px 2px;">
+                        <div class="showTitle">
+                            <label id="show2label" style="margin: 2px 2px 4px 4px;color:#666;">窗口2</label>
+                        </div>
+                        <video id="show2video" class="videoContainer" autoplay controls>
+                            <audio id="show2audio" class="audioContainer" autoplay/>
+                        </video>
+                    </div>
+                </div>
+                <div class="clear"></div>
+                <!-- 会议聊天区 -->
+                <div id="group-chat-panel" class="groupChatPanel">
+                    <div class="chatTitle">
+                        <lable id="group-title" style="margin:8px 2px 8px 2px;color:#2d3436;">聊天区</lable>
+                    </div>
+                    <textarea id="txta_group_msg" class="chatMessage" readonly></textarea>
+                    <br>
+                    <lable style="margin:8px 2px 8px 2px;color:#2d3436;">Please input message</lable>
+                    <br>
+                    <input class="chatInput" id="group-chat-input"/>
+                    <div style="display:flex;flex-direction=row;justify-content:space-between;">
+                        <div style="display:flex;flex-direction=row;">
+                            <button class="buttonLeft" id="btn_groupsend" onclick="">Video</button>
+                            <button class="buttonLeft" id="btn_groupsend" onclick="">Screen</button>
+                        </div>
+                        <button class="buttonRight" id="btn_groupsend" onclick="msg_room()">Send</button>
+                    </div>
+                </div>
+            </div>
+            <div class="clear"></div>
+            <!-- 底部区域 -->
+            <div align=center style="margin-top:8px;font-size:24px;color:#2d3436;">欢迎使用 LiveShow 网页版</div>
+            <div align=center style="margin-top:8px;font-size:12px;color:gray;">性能卓越，简洁实用，操作便捷，多点交互 - Max Screen</div>
+            <div style="text-align:center; padding:8px 0 0 0;background-color:#fff;">
+                <a style="font-size:12px;" href="http://www.qiyicc.com" target="_blank">官方网站</a> | 
+                <a style="font-size:12px;" href="http://www.qiyicc.com" target="_blank">联系我们</a> |
+                <a style="font-size:12px;" href="http://www.qiyicc.com" target="_blank">官方论坛</a> |
+                <a style="font-size:12px;" href="http://www.qiyicc.com" target="_blank">技术支持</a>
+            </div>
+            <div style="font-size:12px;text-align:center;padding:8px 0 0 0;">Copyright @  2011 期翼软件 All rights reserved --- 京ICP备10015350号-1 --- 京公网安备 11010802018480</div>
+        </div>
+    </div>
+    </div>
+
+    <script src="js/jquery.js"></script>
+    <script>
+        // User 定义
+        function User(json) {
+            this.id = json.data.id;
+            this.sex = json.data.sex;
+            this.name = json.data.name;
+            this.head = json.data.face;
+            this.fileurl = json.data.file;
+        };
+        // ChatRoom 定义
+        function ChatRoom(json) {
+            this.id = json.data.gid;
+            this.name = json.data.gname;
+        };
+
+        function ShowState(idx, title, audio, video) {
+            // 属于哪个用户
+            this.uid = 0;
+            // 0 - show1, 1 - show2, 2 - screen
+            this.idx = idx;
+            // 标题栏
+            this.title = title;
+            // 音频对象
+            this.audio = audio;
+            // 视频对象
+            this.video = video;
+        };
+
+        var userid;
+        var peerid;
+        var roomid;
+        var socket;
+
+        // 用户自身信息
+        var self;
+        // 聊天室对象
+        var chatroom;
+        // 点对点会话对象
+        var peerConnection;
+        // 聊天室会话管理列表
+        var watchConnection=[];
+        // 用户秀 UI 及状态信息
+        var shows = new Array(3);
+
+        var inputMsg_;
+        var emojipre_ = "<img src=\"qrc:///Icons/Emoji/";
+        var emojilast_ = "\" />";
+
+        // stun和turn服务器，打洞服务器设置
+        var iceServer = {
+            "iceServers": [{
+                "url": "stun:stun.l.google.com:19302"
+            }, {
+                "url": "turn:numb.viagenie.ca",
+                "username": "webrtc@live.com",
+                "credential": "muazkh"
+            }]
+        };
+        
+        // 登录界面显示，主界面隐藏
+        function show_main(show) {
+            if (false == show) {            
+                $("#login-form").show();
+                $("#main-form").hide();
+            } else {
+                $("#login-form").hide();
+                $("#main-form").show();        
+            }
+        }
+
+        // 用户界面初始化状态
+        function inital_ui() {
+            let title = chatroom.name + " - 用户[" + self.name + "]";
+            document.getElementById("group-title").innerText = title;
+        };
+
+        // 添加在线用户列表
+        function add_list_online(data) {
+            if (data == undefined ) {
+                return ;
+            }
+            $("#sel_user").empty();
+            for ( var i=0; i < data.length; i++ ) {
+                var txt = "<option value='" + data[i] + "'>" + data[i] + "</option>";
+                $("#sel_user").append(txt);
+            }
+        };
+
+        // 添加一个视频窗口
+        function add_watch_window(peerid) {
+            var div = document.createElement("div");
+            div.id = 'show.' + peerid;
+            div.className = "roomVideoDiv";
+            
+            var title = document.createElement("div");
+            var name = document.createElement("label");
+            name.setAttribute("style", "margin: 2px 2px 4px 0px;color:#666;");
+            name.innerHTML = "User: " + peerid;
+            title.appendChild(name);
+            var sub = document.createElement("button");
+            sub.setAttribute("type", "button");            
+            sub.setAttribute("id", 'sub.' + peerid);
+            sub.setAttribute("style", "margin: 2px 2px 4px 4px;float:right;color:#666;");
+            sub.setAttribute("onclick", "subscribe_show(this.id, true)");
+            sub.innerHTML = "订阅视频";            
+            var unsub = document.createElement("button");
+            unsub.setAttribute("type", "button");
+            unsub.setAttribute("id", 'unsub.' + peerid);
+            unsub.setAttribute("style", "margin: 2px 2px 4px 0px;float:right;color:#666;");
+            unsub.setAttribute("onclick", "subscribe_show(this.id, false)");
+            unsub.innerHTML = "取消订阅";
+            if (self.id == peerid) {
+                name.innerHTML = "Local";
+                sub.style.visibility = "hidden";
+                unsub.style.visibility = "hidden";
+            }
+            title.appendChild(unsub);
+            title.appendChild(sub);
+            div.appendChild(title);
+
+            var body = document.createElement("div");
+            var watch = document.createElement("video");
+            watch.autoplay = true;
+            watch.setAttribute("id", "video." + peerid);
+            watch.setAttribute("class", "videoContainer");
+            body.appendChild(watch);
+            body.id = "divVideo." + peerid;
+            div.appendChild(body);
+            div.setAttribute("style", "margin: 0px 2px 0px 2px;");
+            document.getElementById("group-video-panel").appendChild(div);
+        };
+
+        // 等待播放一个视频
+        function wait_watch_window(peerid) {
+            var body = document.getElementById("divVideo." + peerid);
+            body.style.display = "none"
+            body.style.visibility = "hidden";
+            var div = document.getElementById("show." + peerid);
+            var load = document.getElementById("loadVideo." + peerid);
+            var load = document.createElement("div");
+            var wait = loading.init(240, 160);
+            loading.loop();
+            load.id = "loadVideo." + peerid;
+            load.style.background = "gray";
+            load.style.margin = "6px 0px 0px 0px";
+            load.appendChild(wait);            
+            div.appendChild(load);
+            document.getElementById("videoWindow").appendChild(div);            
+        };
+
+        // 开始播放一个视频
+        function play_watch_window(peerid) {
+            var body = document.getElementById("divVideo." + peerid);
+            body.style.display = ""
+            body.style.visibility = "visible";
+            var video = document.getElementById('video.' + peerid);
+            var div = document.getElementById("show." + peerid);
+            var load = document.getElementById("loadVideo." + peerid);
+            if ( load )    {
+                div.removeChild(load);
+            }            
+        };
+
+        // 群组用户列表
+        function on_users_room(data) {
+            var roomid = data["room"];
+            var users = data["users"];
+            if (users == undefined || users == null) {
+                return ;
+            }
+            $("#sel_room").empty();
+            for ( var i=0; i < users.length; i++ ) {
+                var txt = "<option value='" + users[i] + "'>" + users[i] + "</option>";
+                $("#sel_room").append(txt);
+            }
+        };
+
+        // 群组用户上下线
+        function on_user_room(data) {
+            var roomid = data["room"];
+            var peerid = data["peer"];
+            var state = data["state"];
+            if ( state === "on" ) {
+                var txt = "<option value='" + peerid + "'>" + peerid + "</option>";
+                $("#sel_room").append(txt);
+            } else if ( state === "off" ) {
+                $("#sel_room option").each(function(){
+                    if($(this).val() == peerid){
+                        $(this).remove();
+                    }
+                });
+            }            
+        };
+        
+        // 窗口初始化
+        $(document).ready(function() {
+
+            // 主界面隐藏
+            show_main(false);
+
+            // 初始化视频窗口
+            shows[0] = new ShowState(0,
+                document.getElementById("show1label"),
+                document.getElementById("show1audio"), 
+                document.getElementById("show1video"));
+            shows[1] = new ShowState(1,
+                document.getElementById("show2label"),
+                document.getElementById("show2audio"),
+                document.getElementById("show2video"));
+            shows[2] = new ShowState(2,
+                null,
+                document.getElementById("screenaudio"),
+                document.getElementById("screenvideo"));
+
+            // 聊天输入框
+            inputMsg_ = document.getElementById("group-chat-input");
+            
+            // 创建PeerConnection实例 (参数为null则没有iceserver，即使没有stunserver和turnserver，仍可在局域网下通讯)
+            window.RTCPeerConnection = window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
+            // 与信令服务器的WebSocket连接, 如果进行 webrtc 音视频必须加密, wss://192.168.1.1:8181/webrtc/socket 这种形式
+            
+            var protocolStr = document.location.protocol;
+            if (protocolStr == "http:") {
+                socket = new WebSocket("ws://" + window.location.host + "/webrtc/socket");    
+            } else if(protocolStr == "https:") {
+                socket = new WebSocket("wss://" + window.location.host + "/webrtc/socket");    
+            } else {
+                alert("bad protocol");
+            }
+
+            socket.onclose = e => {
+                // 清空聊天室状态
+                for ( var i=0; i < shows.length; i++ ) {
+                    shows[i].uid = 0;
+                    detach_render(shows[i].audio);
+                    detach_render(shows[i].video);
+                    off_title(i+1, shows[i].label);
+                }
+                // 清空 WebRTC 连接
+                for ( var i=0; i < watchConnection.length; i++ ) {
+                    watchConnection[i]["watch"].close();
+                }
+                watchConnection = [];
+                alert("socket disconnect");
+            };
+
+            socket.onerror = function() {
+                // reconnect() //重连
+            };
+            
+            //处理到来的信令
+            socket.onmessage = function(event) {
+                // no json.code  ---> request
+                // has json.code ---> response
+                var json = JSON.parse(event.data);
+                console.log('recv json: ' + event.data);
+                // 聊天室消息
+                if (json.msg === "msg_group_chat") {
+                    if (json.code) {
+                    } else {
+                        if (json.data.type == 10) {
+                            json.data.time;
+                            add_group_msg("用户[" + json.data.fid + "]: " + json.data.msg);
+                        }
+                    }
+                // 聊天室用户上下线
+                } else if (json.msg === "group_user") {
+                    if (1 == json.data.status) {
+                    } else if (0 == json.data.status) {
+                        off_watch_room(json.data.id, 0);
+                    }                
+                // 用户登录
+                } else if (json.msg === "login") {
+                    if (json.code === "0") {
+                        // 初始化用户自身信息
+                        self = new User(json);
+                        // 初始化会议室对象
+                        chatroom = new ChatRoom(json);
+                        // 更新 IceServer
+                        if ( json.data.ice != null ) {
+                            iceServer = json.data.ice ;
+                        }
+                        // 初始化界面
+                        inital_ui();
+                        // 显示主界面
+                        show_main(true);
+                        // 登录到会议室
+                        login_roomchat();
+
+                    } else {
+                        alert("错误码: " + json.code + "\r\n如果会议室不存在，请勾选下面的<创建会议>.");
+                    }
+                // 登录会议室
+                } else if (json.msg === "login_room_chat") {
+                    if (json.code === "0") {
+                        $("#sel_room").empty();
+                        if (json.data.users == null) {
+                            return;
+                        }
+                        for ( var i=0; i < json.data.users.length; i++ ) {
+                            var txt = "<option value='" + json.data.users[i].id + "'>" + json.data.users[i].name + "</option>";
+                            $("#sel_room").append(txt);
+                        }
+                    } else {
+                        alert(json.code);
+                    }
+
+                // 在麦列表，服务器通知，没有 json.code
+                } else if (json.msg === "list_show") {
+                    if (json.data.show == null) {
+                        return;
+                    }
+                    for ( var i=0; i < json.data.show.length; i++ ) {
+                        // 添加一个播放窗口
+                        // add_watch_window(json.data.show[i].uid);
+                        watch_show(json.data.gid, json.data.show[i].id, json.data.show[i].type, true);
+                    }
+
+                // 申请视频播放
+                } else if (json.msg === "watch_show") {
+                    if (json.code === "0") {
+                        // 老的流程
+                        // build_watch(json);
+                        // 新的流程
+                        build_whep(json);
+                    } else {
+                        alert("watch_show:" + json.code);
+                    }                
+
+                // 在线列表
+                } else if (json.msg === "list_online" ) {
+                    if (json.code === "0") {
+                        add_list_online(json.data);
+                    }
+                // 查找用户
+                } else if (json.msg === "find_user" ) {
+                    if (json.code === "0") {
+                        // json.data; // array
+                    }
+                // 对方呼叫请求
+                } else if (json.msg === "ask_call") {
+                    if ( json.code ) {
+                        alert(json.code);
+                    } else if ( json.data ) {
+                        peerid = json.data.from;
+                        agree_call();
+                    }
+                // 对方挂断
+                } else if (json.msg === "stop_call") {
+                    user_ui_state(false);
+                    peerConnection.close();
+                // 对方拒绝请求
+                } else if (json.msg === "refuse_call") {
+                    if ( json.code ) {
+                    } else {
+                        alert("peer refuse call");
+                    }
+                // 对方应答请求
+                } else if (json.msg === "agree_call") {
+                    if ( json.code ) {
+                        alert(json.code);
+                    } else if (json.data) {
+                        console.log("agree_call recv");
+                        build_call(true);
+                    }
+                //如果是一个ICE的候选，则将其加入到PeerConnection中，否则设定对方的session描述为传递过来的描述
+                } else if (json.msg === "candidate_call") {
+                    if ( json.code ) {
+                    } else if ( json.data ) {
+                        if ( json.data.candidate ) {
+                            peerConnection.addIceCandidate(new RTCIceCandidate(json.data.candidate));
+                        }
+                    }
+                // 处理对方的 offer
+                } else if (json.msg === "offer_call" ) {
+                    if (json.code) {                        
+                    } else if (json.data) {
+                        console.log("offer_call recv");
+                        var desc1 = new RTCSessionDescription();
+                        desc1.sdp = json.data.sdp.sdp;
+                        desc1.type = 'offer';
+                        peerConnection.setRemoteDescription(desc1);
+                        // 发送answer
+                        peerConnection.createAnswer(function(desc) { 
+                            peerConnection.setLocalDescription(desc);
+                            answer_call(desc);
+                        }, function (error) {
+                            console.log('answer_call failed: ' + error);
+                        });
+                    }
+                // 处理对方的 answer
+                } else if (json.msg === "answer_call" ) {
+                    var desc = new RTCSessionDescription();
+                    desc.sdp = json.data.sdp.sdp;
+                    desc.type = 'answer';
+                    peerConnection.setRemoteDescription(desc);
+                // 处理对方的消息
+                } else if (json.msg === "msg_peer") {
+                    if (json.code) {
+                        alert(json.code);
+                    } else {
+                        add_peer_msg(json.data.from + ": " + json.data.txt);
+                    }
+                // 群组列表
+                } else if (json.msg === "list_room") {
+                // 查找群组
+                } else if (json.msg === "find_room") {
+                // 处理加入群组
+                } else if (json.msg === "join_room") {
+                    if (json.code === "0") {
+                        room_ui_state(true);
+                    } else {
+                        alert(json.code);
+                    }
+                // 处理离开群组
+                } else if (json.msg === "leave_room") {
+                    room_ui_state(false);
+                // 用户上下线
+                } else if (json.msg === "user_room" ) {
+                    on_user_room ( json.data ) ;
+                // 群组列表
+                } else if (json.msg === "users_room") {
+                    on_users_room ( json.data ) ;                
+                // 群组上麦
+                } else if (json.msg === "on_show") {
+                    // self on show --- request from self
+                    if ( json.code ) {     
+                        if (json.code === "0") {
+                            build_show();
+                        } else {
+                            alert(json.code);
+                        } 
+                    // peer on show --- notify from server
+                    } else {
+                        // add_watch_window(json.data.peer);
+                        watch_show(json.data.gid, json.data.fid, json.data.type, true);
+                    }
+                // 群组下麦
+                } else if (json.msg === "off_show") {
+                    // self off show --- request from self
+                    if ( json.code ) {
+                    // peer off show --- notify from server
+                    } else {
+                        off_watch_room(json.data.fid, json.data.type);
+                        destroy_watch(json.data.fid, json.data.type);
+                    }
+                // 群组推流 offer
+                } else if (json.msg === "offer_show") {
+                    if (json.code === "0") {
+                        var desc = new RTCSessionDescription();
+                        desc.sdp = json.data.sdp;
+                        desc.type = 'answer';
+                        peerConnection.setRemoteDescription(desc);                        
+                    } 
+                // 群组拉流新方式 whep 
+                } else if (json.msg == "whep_show") {
+                    if (json.code == "0") {
+                        var desc = new RTCSessionDescription();
+                        desc.sdp = json.data.sdp;
+                        desc.type = 'answer';
+                        var key = json.data.tid + json.data.type;
+                        for ( var i=0; i < watchConnection.length; i++ ) {
+                            if ( watchConnection[i]["key"] == key) {
+                                watchConnection[i]["watch"].setRemoteDescription(desc);
+                                break;
+                            }
+                        }
+                    }
+                // 群组拉流老方式 answer
+                } else if (json.msg === "answer_show") {
+                // 准备上麦环境
+                } else if (json.msg === "candidate_show") {
+                // 订阅某个人的视频
+                } else if (json.msg === "subscribe_show") {
+                    if (json.code === "0") {
+                        if ( json.data.watch == true ) {
+                            build_watch(json);
+                        } else {
+                            destroy_watch(json.data.peer, 0);
+                        }
+                    } else {
+                        alert(json.code);
+                    }            
+                }
+            };
+        });
+
+        //--------------------------------------------------- common function ---------------------------------------------------//    
+        
+        // 字符串为空判断
+        function is_empty(str) {
+            if(typeof str== null || str== "" || str== "undefined") {
+                return true;
+            } else {
+                return false;
+            }
+        };
+
+        // 挂接渲染
+        function attach_render(media, stream) {
+            if ("srcObject" in media) {
+                media.srcObject = stream;
+            } else {
+                media.src = window.URL.createObjectURL(stream); 
+            }
+        };
+
+        // 关闭渲染
+        function detach_render(media) {
+            if ("srcObject" in media) {
+                media.srcObject = null;
+            } else {
+                media.src = null;
+            }            
+        };
+
+        // 标题栏占用
+        function on_title(offer, uid, title) {
+            if (null == title) {
+                return;
+            }
+            if (offer) {
+                title.innerHTML = "自己:" + uid;
+            } else {
+                title.innerHTML = "用户:" + uid;
+            }        
+        };
+
+        // 标题栏空闲
+        function off_title(idx, title) {
+            if (null == title) {
+                return;
+            }
+            title.innerHTML = "窗口" + idx;
+        };
+
+        //--------------------------------------------------- function about user ---------------------------------------------------//        
+
+        // 启动 video 并发送 offer 
+        function video_offer(ispeer, iscaller) {
+            // 获取本地音频数据
+            navigator.getMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia
+            navigator.getMedia({
+                audio: true, // 是否开启麦克风
+                video: true // 是否开启摄像头，这里还可以进行更多的配置
+            }, function( stream ) {                
+                // 绑定本地媒体流到video标签用于输出 
+                var video = document.getElementById( ispeer ? 'localVideo': 'localShow') ; 
+                attach_render(video, stream);
+                // 向PeerConnection中加入需要发送的流 
+                peerConnection.addStream(stream);
+                if (ispeer ) {
+                    if (iscaller) {                    
+                        // 如果是发起方则发送一个offer信令
+                        peerConnection.createOffer(function(desc) {                        
+                            peerConnection.setLocalDescription(desc);
+                            offer_call(desc);                        
+                        }, function (error) {
+                            console.log('Failure callback: ' + error);
+                        });    
+                    }
+                } else {
+                    // 如果是发起方则发送一个offer信令
+                    peerConnection.createOffer(function(desc) {
+                        // 设置本地Offer
+                        peerConnection.setLocalDescription(desc);
+                        offer_show(desc);
+                    }, function (error) {
+                        console.log('Failure callback: ' + error);
+                    });    
+                }
+            }, function(error) { 
+                // 获取本地视频流失败
+                console.log("获取本地视频流失败");
+            });
+        };
+
+        // 转换成可视的文本
+        function rich2text(data) {
+            var text = "";
+            while (true) {        
+                var pos = data.indexOf(emojipre_);
+                if (-1 == pos) {
+                    text += data;
+                    break;
+                }
+                text += data.substr(0,pos);
+                data = data.substr(pos);
+                pos = data.indexOf(emojilast_);
+                if (-1 == pos) {
+                    text += data;
+                    break;
+                }
+                text += "<表情" + data.substr(emojipre_.length, pos-emojipre_.length) + ">";
+                data = data.substr(pos+4);
+            }
+            return text;
+        }
+
+        // 对聊消息 ( jquery has issue when delete texta content, late msg can't display )
+        function add_peer_msg(data) {
+            var msg = document.getElementById("txta_peer_msg").value + rich2text(data) + "\r\n";
+            document.getElementById("txta_peer_msg").value = msg;
+            $("#txta_peer_msg").scrollTop($("#txta_peer_msg")[0].scrollHeight);
+        };
+
+        // 构建 webrtc 基本信息
+        function build_call(iscaller) {
+            peerConnection = new RTCPeerConnection(iceServer);
+            video_offer ( true, iscaller ) ;            
+            // 发送ICE候选到其他客户端
+            peerConnection.onicecandidate = function(event){
+                candidate_call(event.candidate);
+            };            
+            // 如果检测到媒体流连接到本地，将其绑定到一个video标签上输出
+            peerConnection.onaddstream = function(event){
+                var video = document.getElementById('remoteVideo');
+                attach_render(video, event.stream);
+            };
+            user_ui_state(true);
+        };
+
+        //------------------------------------------------------ function about group ----------------------------------------------------------//
+
+        // 聊天室上秀 UI 更改
+        function on_watch_room(offer, type, json, event) {
+            // 普通视频 Video
+            if (1 == json.data.type) {
+                var idx = -1;
+                var find = false;
+                for ( var i=0; i<2; i++ ) {
+                    if ((0 == shows[i].uid) && (-1 == idx) ) {
+                        idx = i;
+                    }
+                    if (json.data.tid == shows[i].uid) {
+                        find = true;
+                        if ("audio" == type) {
+                            attach_render(shows[i].audio, event.streams[0]);
+                        } else if ("video" == type)    {
+                            attach_render(shows[i].video, event.streams[0]);
+                        }
+                        break;
+                    }
+                }
+                if (!find && idx>=0 && idx<2) {
+                    shows[idx].uid = json.data.tid;
+                    on_title(offer, shows[idx].uid, shows[idx].title);
+                    if ("audio" == type) {
+                        attach_render(shows[idx].audio, event.streams[0]);
+                    } else if ("video" == type)    {
+                        attach_render(shows[idx].video, event.streams[0]);
+                    }
+                }
+            // 屏幕共享 Screen
+            } else if (2 == json.data.type) {
+                if (0 != shows[2].uid && json.data.tid != shows[2].uid) {
+                    return;
+                }
+                var idx = 2;
+                shows[idx].uid = json.data.tid;
+                on_title(offer, shows[idx].uid, shows[idx].title);
+                if ("audio" == type) {
+                    attach_render(shows[idx].audio, event.streams[0]);
+                } else if ("video" == type)    {
+                    attach_render(shows[idx].video, event.streams[0]);
+                }
+            }
+        };
+
+        // 聊天室下秀 UI 更改
+        function off_watch_room(peerid, type) {
+            // 视频窗口下线 Video
+            if (1 == type) {            
+                for ( var i=0; i<2; i++ ) {
+                    if (peerid != shows[i].uid) {
+                        continue;
+                    }
+                    shows[i].uid = 0;
+                    off_title(i, shows[i].title);
+                    detach_render(shows[i].audio);
+                    detach_render(shows[i].video);
+                    break;                    
+                }
+            // 屏幕共享下线 Screen
+            } else if (2 == type) {
+                var i = 2;
+                if (shows[i].uid != peerid) {
+                    return;
+                }
+                shows[i].uid = 0;
+                off_title(i, shows[i].title);
+                detach_render(shows[i].audio);
+                detach_render(shows[i].video);
+            }
+        };
+
+        // 获取状态
+        function myGetStats(peer, callback) {
+            if (!!navigator.mozGetUserMedia) {
+                peer.getStats(
+                    function (res) {
+                        var items = [];
+                        res.forEach(function (result) {
+                            items.push(result);
+                        });
+                        callback(items);
+                    },
+                    callback
+                );
+            } else {
+                peer.getStats(function (res) {
+                    var items = [];
+                    res.result().forEach(function (result) {
+                        var item = {};
+                        result.names().forEach(function (name) {
+                            item[name] = result.stat(name);
+                        });
+                        item.id = result.id;
+                        item.type = result.type;
+                        item.timestamp = result.timestamp;
+                        items.push(item);
+                    });
+                    callback(items);
+                });
+            }
+        };
+
+        // 获取当前 webrtc 状态
+        function getStats(peerid, watch) {
+           myGetStats(watch, function (results) {
+            for (var i = 0; i < results.length; ++i) {
+                var res = results[i];
+                if ( !("framesDecoded" in res) ) {
+                    continue;
+                }
+                if (res["framesDecoded"] != "0") {
+                    play_watch_window(peerid);
+                    return ;
+                }
+                break;
+            }
+
+            setTimeout(function () {
+                getStats(peerid, watch);
+                }, 3000);
+            });
+        }
+
+        // 构建 webrtc 基本信息
+        async function build_whep(json) {
+            var watch = new RTCPeerConnection();
+            // 发送ICE候选到其他客户端
+            watch.onicecandidate = function(event) {
+                candidate_show(event.candidate);
+            };            
+            // 如果检测到媒体流连接到本地，将其绑定到一个video标签上输出
+            watch.ontrack = function(event) {
+                on_watch_room(false, event.track.kind, json, event);
+            };
+            watch.addTransceiver("video", {direction: 'recvonly'});
+            watch.addTransceiver("audio", {direction: 'recvonly'});
+
+            const offer = await watch.createOffer();
+                        watch.setLocalDescription(offer);
+            whep_show(json.data.gid, json.data.tid, json.data.type, offer.sdp);
+
+            var key = json.data.tid + json.data.type;
+            watchConnection.push({
+                "key" : key,
+                "watch": watch
+            });
+        };
+
+        // 构建 webrtc 基本信息
+        function build_watch(json) {
+            var watch = new RTCPeerConnection(iceServer);
+            watch.addTransceiver("video");
+            watch.addTransceiver("audio");
+            // 发送ICE候选到其他客户端
+            watch.onicecandidate = function(event) {
+                candidate_show(event.candidate);
+            };            
+            // 如果检测到媒体流连接到本地，将其绑定到一个video标签上输出
+            watch.ontrack = function(event) {
+                on_watch_room(false, event.track.kind, json, event);
+            };
+            // 发送answer
+            var desc = new RTCSessionDescription();
+            desc.sdp = json.data.sdp;
+            desc.type = 'offer';
+            watch.setRemoteDescription(desc);
+            watch.createAnswer(function(desc) {
+                watch.setLocalDescription(desc);
+                answer_show(json.data.gid, json.data.tid, json.data.type, desc.sdp);
+            }, function (error) {
+                console.log('answer_call failed: ' + error);
+            });
+
+            var key = json.data.tid+json.data.type;
+            watchConnection.push({
+                "key" : key,
+                "watch": watch
+            });
+        };
+
+        // 群组消息 ( jquery has issue when delete texta content, late msg can't display )
+        function add_group_msg(data) {            
+            var msg = document.getElementById("txta_group_msg").value + rich2text(data) + "\r\n";
+            document.getElementById("txta_group_msg").value = msg;
+            if ( $("#txta_group_msg")[0].scrollHeight ) {
+                $("#txta_group_msg").scrollTop($("#txta_group_msg")[0].scrollHeight);
+            }
+        };
+
+        // 删除 connection 对象
+        function destroy_watch(peerid, type) {
+            if (0 == type) {
+                destroy_watch(peerid, 1);
+                destroy_watch(peerid, 2);
+                return;
+            }
+            var key = peerid + type;
+            for ( var i=0; i < watchConnection.length; i++ ) {
+                if ( watchConnection[i]["key"] == key) {
+                    watchConnection[i]["watch"].close();
+                    watchConnection.splice(i,1);
+                    break;
+                }
+            }
+        };
+
+        // -----------------------------------   与服务器交互 begin   ----------------------------------------
+
+        // 发送函数
+        function socket_send(data) {
+            socket.send(JSON.stringify(data));            
+        };
+
+        // 登录
+        function login() {
+            name = $("#login-name").val();
+            if ( is_empty ( name ) ) {
+                alert("user name can not as null");
+                return ;
+            }
+            meeting = $("#login-meeting").val();
+            if ( is_empty ( meeting ) ) {
+                alert("meeting name can not as null");
+                return ;
+            }
+            passwd = $("#login-passwd").val();
+            if ( is_empty ( passwd ) ) {
+                alert("meeting name can not as null");
+                return ;
+            }
+            man = $("#login-man").is(":checked");
+            create = $("#login-create").is(":checked");
+
+            // 如果第三方授权，密码加密方法如下：
+            // 1. 用户名的 md5   tmp = md5(name).toHex;
+            // 2. 产生临时值     tmp = tmp + passwd
+            // 3. 临时值的 md5   passwd = md5(tmp).toHex;
+            // 目前演示页面，没有具体的计算
+            socket_send({
+                "msg": "login",
+                "data": {
+                    "name": name,
+                    "password": passwd,
+                    "room": meeting,
+                    "sex": man ? 0:1,
+                    "create": create
+                }
+            });
+        };
+        
+        // 在线用户查询，分页显示，每页最大 1000 人
+        function list_online() {
+            socket_send({
+                "msg": "list_online",
+                "data": {
+                    "idx": 0,
+                    "page": 1000
+            }});
+        };
+        
+        // 查找用户, 分页显示，每页最大 300 人
+        function find_user() {
+            socket_send({
+                "msg": "find_user",
+                "data": "test"
+            });
+        };
+            
+        // -----------------------------------   点对点消息   ----------------------------------------
+
+        // 发送对聊消息
+        function msg_peer() {
+            var peerid = $("#sel_user option:selected").text();
+            var peermsg = $("#txt_peer_msg").val();
+            socket_send({
+                "msg": "msg_peer",
+                "data": {
+                    "from": userid,
+                    "to": peerid,
+                    "txt": peermsg
+            }});
+            add_peer_msg(userid + ": " + peermsg);
+        };
+
+        // 点对点音视频呼叫 - 发起
+        function ask_call(){
+            peerid = $("#sel_user option:selected").text();
+            if ( is_empty ( peerid ) ) {
+                alert("please input peer id");
+                return;
+            }
+            socket_send({
+                "msg": "ask_call",
+                "data": {
+                  "from": userid,
+                  "to": peerid
+            }});
+        };
+
+        // 点对点音视频呼叫 - 同意
+        function agree_call() {
+            socket_send({
+                "msg": "agree_call",
+                "data": {
+                    "from": userid,
+                    "to": peerid
+            }});
+            build_call(false);
+        };
+
+        // 点对点音视频呼叫 - 挂断
+        function stop_call() {
+            user_ui_state(false);
+            peerConnection.close();
+            socket_send({
+                "msg": "stop_call",
+                "data": {
+                    "from": userid,
+                    "to": peerid
+            }});            
+        };
+
+        // 点对点音视频呼叫 - 发送 offer
+        function offer_call(desc) {
+            socket_send({
+                "msg": "offer_call",
+                "data": {
+                    "from": userid,
+                    "to": peerid,
+                    "sdp": desc
+            }});
+        };
+
+        // 点对点音视频呼叫 - 发送 answer
+        function answer_call(desc) {
+            socket_send({
+                "msg": "answer_call",
+                "data": {
+                    "from": userid,
+                    "to": peerid,
+                    "sdp": desc
+            }});            
+        };
+
+        // 点对点音视频呼叫 - 发送 candidate
+        function candidate_call(candidate) {
+            if (candidate === null)    {
+                return;
+            }
+            socket_send({
+                "msg": "candidate_call",
+                "data": {
+                    "from": userid,
+                    "to": peerid,
+                    "candidate": candidate
+            }});
+        };
+
+        // -----------------------------------   聊天室消息   ----------------------------------------
+
+        // 登录到聊天室
+        function login_roomchat() {
+            socket_send({
+                "msg": "login_room_chat",
+                "data": {
+                    "gid": chatroom.id
+                }
+            });
+        };
+
+        // 退出聊天室
+        function logoff_room() {
+            alert("logoff room?");
+            socket_send({
+              "msg": "logoff_room_chat",
+              "data": {
+                  "gid": chatroom.id
+            }});
+        };
+
+        // 查找聊天室列表信息，分页显示，每页最大 200 个
+        function find_room() {
+            roomid= $("#txt_room").val();
+            if ( is_empty ( roomid ) ) {
+                alert("roomid can not as null");
+                return ;
+            }
+            socket_send({
+              "msg": "find_room",
+              "data": {
+                  "room": roomid
+            }});
+        };
+
+        // 查询聊天室列表信息，分页显示，每页最大 1000 个
+        function list_room() {
+            socket_send({
+                "msg": "list_room",
+                "data": {
+                    "idx": 1,
+                    "page": 1000
+            }});
+        };
+
+        // 聊天室消息群组消息
+        function msg_room() {
+            var now = new Date();
+            var msg = inputMsg_.value;
+            if (msg == null || msg == "") {
+                return;
+            }
+            socket_send({
+                "msg": "msg_group_chat",
+                "data": {
+                    "gid": chatroom.id,
+                    "fid": self.id,
+                    "tid": 0,
+                    "msg": msg,
+                    "type": 10,
+                    "time": now.getMilliseconds()
+            }});
+            add_group_msg("我自己: " + msg);
+            inputMsg_.value = "";
+        };
+
+        // 订阅在秀(onshow)用户音视频
+        function watch_show(gid, tid, type, on) {
+            socket_send({
+                "msg": "watch_show",
+                "data": {
+                    "gid": gid,
+                    "tid": tid,
+                    "type": type,
+                    "watch": on
+                }
+            });
+        };
+
+        // 上秀请求
+        function on_show() {
+            socket_send({
+              "msg": "on_show",
+              "data": {
+                  "gid": roomid
+            }});
+        };
+
+        // 下秀请求
+        function off_show() {
+            socket_send({
+              "msg": "off_show",
+              "data": {
+                  "gid": roomid
+            }});
+            peerConnection.close();
+            var video = document.getElementById('localShow');
+            detach_render(video);
+        };
+
+        // 发送 offer
+        function offer_show(desc) {
+            socket_send({
+                "msg": "offer_show",
+                "data": {
+                    "room": roomid,
+                    "sdp": desc
+            }});            
+        };
+
+        // 发送 whep 请求
+        function whep_show(gid, tid, type, sdp) {
+            socket_send({
+                "msg": "whep_show",
+                "data": {
+                    "gid": gid,
+                    "tid": tid,
+                    "sdp": sdp,
+                    "mode": 1,
+                    "type": type
+            }});    
+        };
+
+        // 发送 answer 
+        function answer_show(gid, tid, type, sdp) {
+            socket_send({
+                "msg": "answer_show",
+                "data": {
+                    "gid": gid,
+                    "tid": tid,
+                    "type": type,
+                    "sdp": sdp
+            }});            
+        };
+
+        // candidate_show
+        function candidate_show(candidate) {
+            if ( event.candidate === null ) {
+                return;
+            }
+            socket_send({
+                "msg": "candidate_show",
+                "data": {
+                    "room": roomid,
+                    "candidate": candidate
+            }});
+        };
+
+        // 订阅视频窗口
+        function subscribe_show(prefix, on) {            
+            peerid = prefix.split('.')[1];
+            socket_send({
+                "msg": "subscribe_show",
+                "data": {
+                    "room": roomid,
+                    "peer": peerid,
+                    "watch": on
+            }});
+            if (false == on) {
+                loading.stop();
+                var video = document.getElementById("video." + peerid);
+                detach_render(video);
+                play_watch_window(peerid);
+            }
+        };
+
+        // ---------------------------------   与服务器交互 end   -------------------------------------
+
+  </script>
+</body>
+</html>

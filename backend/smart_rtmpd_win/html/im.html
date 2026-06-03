@@ -1,0 +1,1112 @@
+<html>
+  <head>
+      <!-- disable download favicon.ico -->
+	  <link rel="icon" href="data:;base64,=">
+	  <style>
+		.titleLable {
+			margin-top: 20px;
+			font-size:20px;
+			color: #444;
+		}
+		.middleLable {
+			margin-top: 4px;
+			font-size:20px;
+			color: #444;
+		}
+		.videoContainer {
+			width:240;
+			height:160;
+			background-color:gray;
+		}
+		.chatMessage {
+			width:240;
+			height:160;
+			color: #666;
+			margin-bottom: 28px;
+			margin-left:4px;
+		}
+		.chatInput {
+			width: 240;
+			display: flex; 
+			color: #666; 
+			margin-left:4px;
+			margin-bottom:4px;
+		}
+		.inputLable{ 
+		    width: 236px;
+			display: flex; 
+			color: #666; 
+			margin : 1px 4px 4px 4px; 
+		}
+		.inputLable1{ 
+		    width: 480px;
+			display: flex; 
+			color: #666; 
+		}
+		.inputLable input{ 
+			width: 100%; 
+			height: 24px; 
+		}
+		.buttonRight{ 
+			width: 100px; 
+			height: 28px; 
+			margin : 1px 4px 4px 4px; 
+			float: left; 
+			color: #26baff; 
+		}
+		.statusLable {
+			font-size: 12px;
+			color: #666;
+		}
+		.peerVideoDiv {
+			display: inline-block;
+		}
+		.roomVideoDiv {
+			display: inline-block;
+		}
+	  </style>
+  </head>
+  <body>
+  	<div>
+		<p align="center" class="titleLable">Smart_rtmpd --- demo for webrtc peer & group call</p>		
+	</div>
+	<label class="inputLable" id="lb_id">UserID</label>
+    <div id="loginPanel">        
+		<input class="inputLable" id="txt_id" value="test"/>
+        <button class="buttonRight" type="button" id="btn_login" onclick="login()">Login</button><br><br>
+    </div>
+	<br>
+	<!-- peer webrtc -->
+	<label>---------------------------------------------------------------------------------------------------------------------------------</label>
+    <div>
+	  	<div>
+			<p><button type="button" id="btn_peer" onclick="btn_peer()" >PeerCall -</button></p>
+		</div>
+		<div id="peerPanel">
+			<div class="peerVideoDiv">
+				<div>
+					<div class="peerVideoDiv">
+				        <label class="inputLable">Local</label>
+						<video id="localVideo" class="videoContainer" autoplay="autoplay" muted="muted"></video>
+					</div>
+					<div class="peerVideoDiv">
+					    <label class="inputLable">Remote</label>
+						<video id="remoteVideo" class="videoContainer" autoplay="autoplay" muted="muted"></video>
+					</div>
+				</div>
+				<br>
+				<label class="inputLable">PeerID</label>				
+				<select class="inputLable" id="sel_user"></select>
+				<button class="buttonRight" type="button" id="btn_list" onclick="list_online()">Online</button>
+				<button class="buttonRight" type="button" id="btn_call" onclick="ask_call()">Call</button>
+		        <button class="buttonRight" type="button" id="btn_hangup" onclick="stop_call()">Hangup</button>
+			</div>
+			<div class="peerVideoDiv">
+				<div style="margin-left:50px">
+					<lable class="inputLable">Chat Message</lable>
+					<textarea class="chatMessage" id="txta_peer_msg"></textarea>
+					<br>
+					<lable class="inputLable">Please input message</lable>
+					<input class="chatInput" id="txt_peer_msg"/>
+					<button class="buttonRight" type="button" id="btn_send" onclick="msg_peer()">Send</button>
+				</div>
+			</div>
+		</div>
+	<div>
+	<br>
+	<!-- group webrtc -->
+	<label>---------------------------------------------------------------------------------------------------------------------------------</label>
+    <div>
+	  	<div>
+			<p><button type="button" id="btn_group" onclick="btn_group()">GroupCall -</button></p>
+		</div>
+		<div id="groupPanel">
+			<div class="peerVideoDiv">
+				<div id="videoWindow">
+					<div class="roomVideoDiv">
+				        <label class="inputLable">Local</label>
+						<video id="localShow" class="videoContainer" autoplay="autoplay" muted="muted"></video><br>
+					</div>
+				</div>
+				<br>
+		        <label class="inputLable">RoomID</label>
+				<div class="inputLable1">
+					<input class="inputLable" id="txt_room" value="smart_rtmpd"/>
+					<select class="inputLable" id="sel_room"></select>
+				</div>
+				<button class="buttonRight" type="button" id="btn_join" onclick="join_room()">Join</button>
+		        <button class="buttonRight" type="button" id="btn_leave" onclick="leave_room()">Leave</button>
+				<button class="buttonRight" type="button" id="btn_onshow" onclick="on_show()">OnShow</button>
+				<button class="buttonRight" type="button" id="btn_offshow" onclick="off_show()">OffShow</button>
+		    </div>
+			<div class="peerVideoDiv">
+				<div style="margin-left:50px">
+					<lable class="inputLable">Group Message</lable>
+					<textarea class="chatMessage" id="txta_group_msg"></textarea>
+					<br>
+					<lable class="inputLable">Please input message</lable>
+					<input class="chatInput" id="txt_group_msg"/>
+					<button class="buttonRight" type="button" id="btn_groupsend" onclick="msg_room()">Send</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+    <script src="js/jquery.js"></script>
+	<script src="js/loading.js"></script>
+	<script>
+		var userid;
+		var peerid;
+		var roomid;
+		var socket;
+		var peerConnection;
+		var watchConnection = [];
+		var showPeer = true;
+		var showGroup = true;
+		// stun和turn服务器，打洞服务器设置
+		var iceServer = {
+			"iceServers": [{
+				"url": "stun:stun.l.google.com:19302"
+			}, {
+				"url": "turn:numb.viagenie.ca",
+				"username": "webrtc@live.com",
+				"credential": "muazkh"
+			}]
+		};
+
+		function login_ui_inital() {
+			$("#loginPanel").css('display', '');
+			$("#loginPanel").css('visibility', 'visible');
+		};
+
+		function login_ui_state(online) {
+			if (online) {
+				$("#lb_id").text('UserID: ' + userid);
+				$("#loginPanel").css('display', 'none');
+				$("#loginPanel").css('visibility', 'hidden');
+			} else {
+				$("#lb_id").text('UserID');
+				$("#loginPanel").css('display', '');
+				$("#loginPanel").css('visibility', 'visible');
+			}			
+		};
+
+		// 用户界面初始化状态
+		function user_ui_inital() {
+			$("#btn_call").attr('disabled', true);
+			$("#btn_hangup").attr('disabled',true);
+			$("#btn_send").attr('disabled', true);
+
+			$("#btn_call").css('color', 'gray');
+			$("#btn_hangup").css('color', 'gray');
+			$("#btn_send").css('color', 'gray');
+		};
+
+		// 用户界面状态
+		function user_ui_state(incall) {
+			if ( incall ) {				
+				$("#btn_call").attr('disabled', true);
+				$("#btn_hangup").attr('disabled', false);
+				$("#btn_send").attr('disabled', false);
+				
+				$("#btn_call").css('color', 'gray');
+				$("#btn_hangup").css('color', '#26baff');
+				$("#btn_send").css('color', '#26baff');
+			} else {
+				$("#btn_call").attr('disabled', false);
+				$("#btn_hangup").attr('disabled', true);
+				$("#btn_send").attr('disabled', false);
+				
+				$("#btn_call").css('color', '#26baff');
+				$("#btn_hangup").css('color', 'gray');
+				$("#btn_send").css('color', '#26baff');
+
+				var local = document.getElementById('localVideo');
+				var remote = document.getElementById('remoteVideo');
+				video_off(local);
+				video_off(remote);
+			}
+		};
+
+		// 群组界面初始化状态
+		function room_ui_inital() {
+			$("#btn_join").attr('disabled', true);
+			$("#btn_leave").attr('disabled',true);
+			$("#btn_onshow").attr('disabled',true);
+			$("#btn_offshow").attr('disabled',true);
+			$("#btn_groupsend").attr('disabled',true);
+
+			$("#btn_join").css('color', 'gray');
+			$("#btn_leave").css('color', 'gray');
+			$("#btn_onshow").css('color', 'gray');
+			$("#btn_offshow").css('color', 'gray');
+			$("#btn_groupsend").css('color', 'gray');
+		};
+
+		// 群组界面状态
+		function room_ui_state(inroom) {
+			if ( inroom ) {
+				$("#btn_join").attr('disabled',true);
+				$("#btn_leave").attr('disabled',false);
+				$("#btn_onshow").attr('disabled',false);
+				$("#btn_offshow").attr('disabled',false);
+				$("#btn_groupsend").attr('disabled', false);
+
+				$("#btn_join").css('color', 'gray');
+				$("#btn_leave").css('color', '#26baff');
+				$("#btn_onshow").css('color', '#26baff');
+				$("#btn_offshow").css('color', '#26baff');
+				$("#btn_groupsend").css('color', '#26baff');
+			} else {
+				$("#btn_join").attr('disabled',false);
+				$("#btn_leave").attr('disabled',true);
+				$("#btn_onshow").attr('disabled',true);
+				$("#btn_offshow").attr('disabled',true);
+				$("#btn_groupsend").attr('disabled', true);
+
+				$("#btn_join").css('color', '#26baff');
+				$("#btn_leave").css('color', 'gray');
+				$("#btn_onshow").css('color', 'gray');
+				$("#btn_offshow").css('color', 'gray');
+				$("#btn_groupsend").css('color', 'gray');
+			}
+		};
+
+		// 收起或展开对聊
+		function btn_peer() {
+			if (showPeer) {
+				$("#peerPanel").css('display', 'none');
+				$("#peerPanel").css('visibility', 'hidden');
+				$("#btn_peer").text('PeerCall +');
+			} else {
+				$("#peerPanel").css('display', '');
+				$("#peerPanel").css('visibility', 'visible');
+				$("#btn_peer").text('PeerCall -');
+			}
+			showPeer = !showPeer;			
+		};
+
+		// 收起或展开群聊
+		function btn_group() {
+			if (showGroup) {
+				$("#groupPanel").css('display', 'none');
+				$("#groupPanel").css('visibility', 'hidden');
+				$("#btn_group").text('GroupCall +');
+			} else {
+				$("#groupPanel").css('display', '');
+				$("#groupPanel").css('visibility', 'visible');
+				$("#btn_group").text('GroupCall -');				
+			}
+			showGroup = !showGroup;			
+		};
+
+		// 添加在线用户列表
+		function add_list_online(data) {
+			if (data == undefined ) {
+				return ;
+			}
+			$("#sel_user").empty();
+			for ( var i=0; i < data.length; i++ ) {
+				var txt = "<option value='" + data[i] + "'>" + data[i] + "</option>";
+				$("#sel_user").append(txt);
+			}
+		};
+
+		// 添加一个视频窗口
+		function add_watch_window(peerid) {
+			var div = document.createElement("div");
+			div.id = 'show.' + peerid;
+			div.className = "roomVideoDiv";
+			
+			var title = document.createElement("div");
+			var name = document.createElement("label");
+			name.setAttribute("style", "color:#666;");
+			name.innerHTML = peerid;
+			title.appendChild(name);
+			var sub = document.createElement("button");
+			sub.setAttribute("type", "button");			
+			sub.setAttribute("id", 'sub.' + peerid);
+			sub.setAttribute("style", "margin: 2px 2px 4px 4px;float:right;color:#666;");
+			sub.setAttribute("onclick", "subscribe_show(this.id, true)");
+			sub.innerHTML = "S";			
+			var unsub = document.createElement("button");
+			unsub.setAttribute("type", "button");
+			unsub.setAttribute("id", 'unsub.' + peerid);
+			unsub.setAttribute("style", "margin: 2px 2px 4px 0px;float:right;color:#666;");
+			unsub.setAttribute("onclick", "subscribe_show(this.id, false)");
+			unsub.innerHTML = "U";
+			title.appendChild(unsub);
+			title.appendChild(sub);
+			div.appendChild(title);
+
+			var body = document.createElement("div");
+			var watch = document.createElement("video");
+			watch.autoplay = true;
+			watch.setAttribute("id", "video." + peerid);
+			watch.setAttribute("class", "videoContainer");
+			body.appendChild(watch);
+			body.id = "divVideo." + peerid;
+			div.appendChild(body);
+			document.getElementById("videoWindow").appendChild(div);
+		};
+
+		// 等待播放一个视频
+		function wait_watch_window(peerid) {
+			var body = document.getElementById("divVideo." + peerid);
+			body.style.display = "none"
+			body.style.visibility = "hidden";
+			var div = document.getElementById("show." + peerid);
+			var load = document.getElementById("loadVideo." + peerid);
+			var load = document.createElement("div");
+			var wait = loading.init(240, 160);
+			loading.loop();
+			load.id = "loadVideo." + peerid;
+			load.style.background = "gray";
+			load.style.margin = "6px 0px 0px 0px";
+			load.appendChild(wait);			
+			div.appendChild(load);
+			document.getElementById("videoWindow").appendChild(div);			
+		};
+
+		// 开始播放一个视频
+		function play_watch_window(peerid) {
+			var body = document.getElementById("divVideo." + peerid);
+			body.style.display = ""
+			body.style.visibility = "visible";
+			var video = document.getElementById('video.' + peerid);
+			var div = document.getElementById("show." + peerid);
+			var load = document.getElementById("loadVideo." + peerid);
+			if ( load )	{
+				div.removeChild(load);
+			}			
+		};
+
+		// 群组用户列表
+		function on_users_room(data) {
+			var roomid = data["room"];
+			var users = data["users"];
+			if (users == undefined || users == null) {
+				return ;
+			}
+			$("#sel_room").empty();
+			for ( var i=0; i < users.length; i++ ) {
+				var txt = "<option value='" + users[i] + "'>" + users[i] + "</option>";
+				$("#sel_room").append(txt);
+			}
+		};
+
+		// 群组用户上下线
+		function on_user_room(data) {
+			var roomid = data["room"];
+			var peerid = data["peer"];
+			var state = data["state"];
+			if ( state === "on" ) {
+				var txt = "<option value='" + peerid + "'>" + peerid + "</option>";
+				$("#sel_room").append(txt);
+			} else if ( state === "off" ) {
+				$("#sel_room option").each(function(){
+					if($(this).val() == peerid){
+						$(this).remove();
+					}
+				});
+			}			
+		};
+
+		// 删除一个视频窗口
+		function del_watch_window(peerid) {
+			var watch = document.getElementById('show.' + peerid);
+			document.getElementById("videoWindow").removeChild(watch);	
+		};
+
+		// 对聊消息 ( jquery has issue when delete texta content, late msg can't display )
+		function add_peer_msg(data) {
+			var msg = document.getElementById("txta_peer_msg").value + data + "\r\n";
+			document.getElementById("txta_peer_msg").value = msg;
+			$("#txta_peer_msg").scrollTop($("#txta_peer_msg")[0].scrollHeight);
+		};
+
+		// 群组消息 ( jquery has issue when delete texta content, late msg can't display )
+		function add_group_msg(data) {			
+			var msg = document.getElementById("txta_group_msg").value + data + "\r\n";
+			document.getElementById("txta_group_msg").value = msg;
+			if ( $("#txta_group_msg")[0].scrollHeight ) {
+				$("#txta_group_msg").scrollTop($("#txta_group_msg")[0].scrollHeight);
+			}
+		};
+		
+		// 窗口初始化
+		$(document).ready(function() {
+			
+			login_ui_inital();
+			// 对等状态
+			user_ui_inital();
+			// 群组 UI 状态
+			room_ui_inital();
+			// 创建PeerConnection实例 (参数为null则没有iceserver，即使没有stunserver和turnserver，仍可在局域网下通讯)
+			window.RTCPeerConnection = window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
+			// 与信令服务器的WebSocket连接, 如果进行 webrtc 音视频必须加密, wss://192.168.1.1:8181/webrtc/socket 这种形式
+			socket = new WebSocket("ws://" + window.location.host + "/webrtc/socket");	
+
+			socket.onclose = e => {
+				login_ui_inital();
+				// 对等状态
+				user_ui_inital();
+				// 群组 UI 状态
+				room_ui_inital();
+				for ( var i=0; i < watchConnection.length; i++ ) {
+					watchConnection[i]["watch"].close();
+				}
+				watchConnection = [];
+				alert("socket disconnect");
+			};
+
+			socket.onerror = function() {
+				// reconnect() //重连
+			};
+			
+			//处理到来的信令
+			socket.onmessage = function(event) {
+				// no json.code  ---> request
+				// has json.code ---> response
+				var json = JSON.parse(event.data);
+				// 未知错误
+				if (json.msg === "error") {
+					alert(json.code);
+				// 用户登录
+				} else if (json.msg === "login") {
+					if (json.code === "0") {						
+						login_ui_state(true);
+						user_ui_state(false);
+						room_ui_state(false);
+						list_online();
+						if ( json.data.ice != null ) {
+							iceServer = json.data.ice ;
+						}
+					} else {
+						login_ui_inital();
+						user_ui_inital();
+						room_ui_inital();
+						alert(json.code);
+					}
+				// 在线列表
+				} else if (json.msg === "list_online" ) {
+					if (json.code === "0") {
+						add_list_online(json.data);
+					}
+				// 查找用户
+				} else if (json.msg === "find_user" ) {
+					if (json.code === "0") {
+						// json.data; // array
+					}
+				// 对方呼叫请求
+				} else if (json.msg === "ask_call") {
+					if ( json.code ) {
+						alert(json.code);
+					} else if ( json.data ) {
+						peerid = json.data.from;
+						agree_call();
+					}
+				// 对方挂断
+				} else if (json.msg === "stop_call") {
+					user_ui_state(false);
+					peerConnection.close();
+				// 对方拒绝请求
+				} else if (json.msg === "refuse_call") {
+					if ( json.code ) {
+					} else {
+						alert("peer refuse call");
+					}
+				// 对方应答请求
+				} else if (json.msg === "agree_call") {
+					if ( json.code ) {
+						alert(json.code);
+					} else if (json.data) {
+						console.log("agree_call recv");
+						build_call(true);
+					}
+				//如果是一个ICE的候选，则将其加入到PeerConnection中，否则设定对方的session描述为传递过来的描述
+				} else if (json.msg === "candidate_call") {
+					if ( json.code ) {
+					} else if ( json.data ) {
+						if ( json.data.candidate ) {
+							peerConnection.addIceCandidate(new RTCIceCandidate(json.data.candidate));
+						}
+					}
+				// 处理对方的 offer
+				} else if (json.msg === "offer_call" ) {
+					if (json.code) {						
+					} else if (json.data) {
+						console.log("offer_call recv");
+						var desc1 = new RTCSessionDescription();
+						desc1.sdp = json.data.sdp.sdp;
+						desc1.type = 'offer';
+						peerConnection.setRemoteDescription(desc1);
+						// 发送answer
+						peerConnection.createAnswer(function(desc) { 
+							peerConnection.setLocalDescription(desc);
+							answer_call(desc);
+						}, function (error) {
+							console.log('anser_call failed: ' + error);
+						});
+					}
+				// 处理对方的 answer
+				} else if (json.msg === "answer_call" ) {
+					var desc = new RTCSessionDescription();
+					desc.sdp = json.data.sdp.sdp;
+					desc.type = 'answer';
+					peerConnection.setRemoteDescription(desc);
+				// 处理对方的消息
+				} else if (json.msg === "msg_peer") {
+					if (json.code) {
+						alert(json.code);
+					} else {
+						add_peer_msg(json.data.from + ": " + json.data.txt);
+					}
+				// 群组列表
+				} else if (json.msg === "list_room") {
+				// 查找群组
+				} else if (json.msg === "find_room") {
+				// 处理加入群组
+				} else if (json.msg === "join_room") {
+					if (json.code === "0") {
+						room_ui_state(true);
+					} else {
+						alert(json.code);
+					}
+				// on_show 用户列表，进入 room 时，通知一次
+				} else if (json.msg === "list_show") {
+					for (let i = 0; i < json.data.length; i++) {
+						add_watch_window(json.data[i]);
+					};
+				// 处理离开群组
+				} else if (json.msg === "leave_room") {
+					room_ui_state(false);
+				// 用户上下线
+				} else if (json.msg === "user_room" ) {
+					on_user_room ( json.data ) ;
+				// 群组列表
+				} else if (json.msg === "users_room") {
+					on_users_room ( json.data ) ;				
+				// 群组上麦
+				} else if (json.msg === "on_show") {
+					// self on show --- request from self
+					if ( json.code ) { 	
+						if (json.code === "0") {
+							build_show();
+						} else {
+							alert(json.code);
+						} 
+					// peer on show --- notify from server
+					} else {
+						add_watch_window(json.data.peer);
+					}
+				// 群组下麦
+				} else if (json.msg === "off_show") {
+					// self off show --- request from self
+					if ( json.code ) {
+					// peer off show --- notify from server
+					} else {
+						del_watch_window(json.data.peer);
+						del_watch(json.data.peer);
+					}
+				// 群组推流 offer
+				} else if (json.msg === "offer_show") {
+					if (json.code === "0") {
+						var desc = new RTCSessionDescription();
+						desc.sdp = json.data.sdp;
+						desc.type = 'answer';
+						peerConnection.setRemoteDescription(desc);						
+					} 
+				// 群组拉流 answer
+				} else if (json.msg === "answer_show") {
+				// 准备上麦环境
+				} else if (json.msg === "candidate_show") {
+				// 订阅某个人的视频
+				} else if (json.msg === "subscribe_show") {
+					if (json.code === "0") {
+						if ( json.data.watch == true ) {
+							build_watch(json.data);
+						} else {
+							del_watch(json.data.peer);
+						}
+					} else {
+						alert(json.code);
+					}			
+				// 群组消息
+				} else if (json.msg === "msg_room") {
+					if (json.code) {
+						alert(json.code);
+					} else {
+						add_group_msg(json.data.peer + ": " + json.data.txt);
+					}
+				}
+			};
+		});
+		
+		// 字符串为空判断
+		function is_empty(str) {
+			if(typeof str== null || str== "" || str== "undefined") {
+				return true;
+			} else {
+				return false;
+			}
+		};
+
+		// 赋值 video stream
+		function video_stream(video, stream) {
+			if ("srcObject" in video) {
+				video.srcObject = stream;
+			} else {
+				video.src = window.URL.createObjectURL(stream); 
+			}
+		};
+
+		// 关闭 video stream
+		function video_off(video) {
+			if ("srcObject" in video) {
+				video.srcObject = null;
+			} else {
+				video.src = null;
+			}			
+		};
+
+		// 启动 video 并发送 offer 
+		function video_offer(ispeer, iscaller) {
+			// 获取本地音频数据
+			navigator.getMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia
+			navigator.getMedia({
+				audio: true, // 是否开启麦克风
+				video: true // 是否开启摄像头，这里还可以进行更多的配置
+			}, function( stream ) {				
+				// 绑定本地媒体流到video标签用于输出 
+				var video = document.getElementById( ispeer ? 'localVideo': 'localShow') ; 
+				video_stream(video, stream);
+				// 向PeerConnection中加入需要发送的流 
+				peerConnection.addStream(stream);
+				if (ispeer ) {
+					if (iscaller) {					
+						// 如果是发起方则发送一个offer信令
+						peerConnection.createOffer(function(desc) {						
+							peerConnection.setLocalDescription(desc);
+							offer_call(desc);						
+						}, function (error) {
+							console.log('Failure callback: ' + error);
+						});	
+					}
+				} else {
+					// 如果是发起方则发送一个offer信令
+					peerConnection.createOffer(function(desc) {
+						// 设置本地Offer
+						peerConnection.setLocalDescription(desc);
+						offer_show(desc);
+					}, function (error) {
+						console.log('Failure callback: ' + error);
+					});	
+				}
+			}, function(error) { 
+				// 获取本地视频流失败
+				console.log("获取本地视频流失败");
+			});
+		};
+
+		// 发送函数
+		function socket_send(data) {
+			socket.send(JSON.stringify(data));			
+		};
+
+		//--------------------------------------------------- function about user ---------------------------------------------------//
+		
+		// 登录
+		function login() {			
+			userid= $("#txt_id").val();
+			if ( is_empty ( userid ) ) {
+				alert("userid can not as null");
+				return ;
+			}
+			socket_send({
+				"msg": "login",
+				"data": userid
+			});
+		};
+		
+		// 在线用户 ( page max : 1000 )
+		function list_online() {
+			socket_send({
+				"msg": "list_online",
+				"data": {
+					"idx": 0,
+					"page": 1000
+			}});
+		};
+		
+		// 查找用户 ( max find : 300 )
+		function find_user() {
+			socket_send({
+				"msg": "find_user",
+				"data": "test"
+			});
+		};	
+
+		
+		// 发送对等消息
+		function msg_peer() {
+			var peerid = $("#sel_user option:selected").text();
+			var peermsg = $("#txt_peer_msg").val();
+			socket_send({
+				"msg": "msg_peer",
+				"data": {
+					"from": userid,
+					"to": peerid,
+					"txt": peermsg
+			}});
+			add_peer_msg(userid + ": " + peermsg);
+		}
+
+		// 发出呼叫
+		function ask_call(){
+			peerid = $("#sel_user option:selected").text();
+			if ( is_empty ( peerid ) ) {
+				alert("please input peer id");
+				return;
+			}
+			socket_send({
+				"msg": "ask_call",
+				"data": {
+				  "from": userid,
+				  "to": peerid
+			}});
+		};
+
+		// 同意呼叫
+		function agree_call() {
+			socket_send({
+				"msg": "agree_call",
+				"data": {
+					"from": userid,
+					"to": peerid
+			}});
+			build_call(false);
+		};
+
+		// 挂断呼叫
+		function stop_call() {
+			user_ui_state(false);
+			peerConnection.close();
+			socket_send({
+				"msg": "stop_call",
+				"data": {
+					"from": userid,
+					"to": peerid
+			}});			
+		};
+
+		// 发送 offer
+		function offer_call(desc) {
+			socket_send({
+				"msg": "offer_call",
+				"data": {
+					"from": userid,
+					"to": peerid,
+					"sdp": desc
+			}});
+		};
+
+		// 发送 answer
+		function answer_call(desc) {
+			socket_send({
+				"msg": "answer_call",
+				"data": {
+					"from": userid,
+					"to": peerid,
+					"sdp": desc
+			}});			
+		};
+
+		// 发送 candidate
+		function candidate_call(candidate) {
+			if (candidate === null)	{
+				return;
+			}
+			socket_send({
+				"msg": "candidate_call",
+				"data": {
+					"from": userid,
+					"to": peerid,
+					"candidate": candidate
+			}});
+		};
+
+		// 构建 webrtc 基本信息
+		function build_call(iscaller) {
+	        peerConnection = new RTCPeerConnection(iceServer);
+			video_offer ( true, iscaller ) ;			
+			// 发送ICE候选到其他客户端
+			peerConnection.onicecandidate = function(event){
+				candidate_call(event.candidate);
+			};			
+			// 如果检测到媒体流连接到本地，将其绑定到一个video标签上输出
+			peerConnection.onaddstream = function(event){
+				var video = document.getElementById('remoteVideo');
+				video_stream(video, event.stream);
+			};
+			user_ui_state(true);
+		};
+
+		//------------------------------------------------------ function about group ----------------------------------------------------------//
+
+		// 查找群组 max count 200
+		function find_room() {
+			roomid= $("#txt_room").val();
+			if ( is_empty ( roomid ) ) {
+				alert("roomid can not as null");
+				return ;
+			}
+			socket_send({
+			  "msg": "find_room",
+			  "data": {
+				  "room": roomid
+			}});
+		};
+
+		// 查询列表 page max 1000
+		function list_room() {
+			socket_send({
+				"msg": "list_room",
+				"data": {
+					"idx": 1,
+					"page": 1000
+			}});
+		};
+
+		// 加入群组
+		function join_room() {
+			roomid= $("#txt_room").val();
+			if ( is_empty ( roomid ) ) {
+				alert("roomid can not as null");
+				return ;
+			}
+			socket_send({
+			  "msg": "join_room",
+			  "data": {
+				  "room": roomid
+			}});			
+		};
+
+		// 离开群组
+		function leave_room() {
+			if ( is_empty ( roomid ) ) {
+				alert("roomid can not as null");
+				return ;
+			}
+			alert("leave room?");
+			socket_send({
+			  "msg": "leave_room",
+			  "data": {
+				  "room": roomid
+			}});
+		};
+
+		// 查看群组列表
+		function users_room() {
+			socket_send({
+			  "msg": "users_room",
+			  "data": {
+				  "room": roomid
+			}});
+		};
+
+		// 群组消息
+		function msg_room() {
+			var groupmsg = $("#txt_group_msg").val();
+			socket_send({
+				"msg": "msg_room",
+				"data": {
+					"room": roomid,
+					"peer": userid,
+					"txt": groupmsg
+			}});
+			add_group_msg(userid + ": " + groupmsg);
+		};
+
+		// 上麦
+		function on_show() {
+			socket_send({
+			  "msg": "on_show",
+			  "data": {
+				  "room": roomid
+			}});
+		};
+
+		// 下麦
+		function off_show() {
+			socket_send({
+			  "msg": "off_show",
+			  "data": {
+				  "room": roomid
+			}});
+			peerConnection.close();
+			var video = document.getElementById('localShow');
+			video_off(video);
+		};
+
+		// 发送 offer
+		function offer_show(desc) {
+			socket_send({
+				"msg": "offer_show",
+				"data": {
+					"room": roomid,
+					"sdp": desc
+			}});			
+		};
+
+		// 发送 answer
+		function answer_show(peerid, desc) {
+			socket_send({
+				"msg": "answer_show",
+				"data": {
+					"room": roomid,
+					"peer": peerid,
+					"sdp": desc
+			}});			
+		};
+
+		// 订阅视频窗口
+		function subscribe_show(prefix, on) {			
+			peerid = prefix.split('.')[1];
+			socket_send({
+				"msg": "subscribe_show",
+				"data": {
+					"room": roomid,
+					"peer": peerid,
+					"watch": on
+			}});
+			if (false == on) {
+				loading.stop();
+				var video = document.getElementById("video." + peerid);
+				video_off(video);
+				play_watch_window(peerid);
+			}
+		};
+
+		// candidate_show
+		function candidate_show(candidate) {
+			if ( event.candidate === null ) {
+				return;
+			}
+			socket_send({
+				"msg": "candidate_show",
+				"data": {
+					"room": roomid,
+					"candidate": candidate
+			}});
+		};
+
+		// 构建 webrtc 基本信息
+		function build_show() {
+	        peerConnection = new RTCPeerConnection(iceServer);
+			video_offer ( false, true ) ;
+			// 发送ICE候选到其他客户端
+			peerConnection.onicecandidate = function(event) {
+				candidate_show(event.candidate);
+			};
+		};
+
+		// 获取状态
+		function myGetStats(peer, callback) {
+			if (!!navigator.mozGetUserMedia) {
+				peer.getStats(
+					function (res) {
+						var items = [];
+						res.forEach(function (result) {
+							items.push(result);
+						});
+						callback(items);
+					},
+					callback
+				);
+			} else {
+				peer.getStats(function (res) {
+					var items = [];
+					res.result().forEach(function (result) {
+						var item = {};
+						result.names().forEach(function (name) {
+							item[name] = result.stat(name);
+						});
+						item.id = result.id;
+						item.type = result.type;
+						item.timestamp = result.timestamp;
+						items.push(item);
+					});
+					callback(items);
+				});
+			}
+		};
+
+		// 获取当前 webrtc 状态
+		function getStats(peerid, watch) {
+		   myGetStats(watch, function (results) {
+			for (var i = 0; i < results.length; ++i) {
+				var res = results[i];
+				if ( !("framesDecoded" in res) ) {
+					continue;
+				}
+				if (res["framesDecoded"] != "0") {
+					play_watch_window(peerid);
+					return ;
+				}
+				break;
+		    }
+
+			setTimeout(function () {
+				getStats(peerid, watch);
+				}, 3000);
+			});
+		}
+
+		// 构建 webrtc 基本信息
+		function build_watch(data) {
+	        var watch = new RTCPeerConnection(iceServer);
+			// 发送ICE候选到其他客户端
+			watch.onicecandidate = function(event) {
+				candidate_show(event.candidate);
+			};			
+			// 如果检测到媒体流连接到本地，将其绑定到一个video标签上输出
+			watch.onaddstream = function(event) {				
+				var vid = 'video.' + data.peer;
+				video_stream(document.getElementById(vid), event.stream);
+				wait_watch_window(peerid);
+				getStats(data.peer, watch);
+			};
+			// 发送answer
+			var desc = new RTCSessionDescription();
+			desc.sdp = data.sdp;
+			desc.type = 'offer';
+			watch.setRemoteDescription(desc);
+			watch.createAnswer(function(desc) {
+				watch.setLocalDescription(desc);
+				answer_show(data.peer, desc);
+			}, function (error) {
+				console.log('anser_call failed: ' + error);
+			});
+
+			watchConnection.push({
+				"peer" : data.peer,
+				"watch": watch
+			});
+
+		};
+
+		// 删除 connection 对象
+		function del_watch(peerid) {
+			for ( var i=0; i < watchConnection.length; i++ ) {
+				if ( watchConnection[i]["peer"] == peerid ) {
+					watchConnection[i]["watch"].close();
+					watchConnection.splice(i,1);
+					break;
+				}
+			}
+		};
+
+  </script>
+</body>
+</html>

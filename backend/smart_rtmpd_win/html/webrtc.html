@@ -1,0 +1,160 @@
+﻿<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <!-- disable download favicon.ico -->
+    <link rel="icon" href="data:;base64,=">
+    <title>Smart_WebRTC Player Demo</title>
+    <!-- Load the polyfill to switch-hit between Chrome and Firefox -->
+    <style>
+        .titleLable {
+            font-size:20px;
+            color: #444;
+            }
+        .mainContainer {
+            display: block;
+            width: 1152px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .videoContainer {
+            width:100%;
+            height:100%;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            margin-bottom: auto;
+        }
+        
+        .inputLable{
+            width: 100%;
+            display: flex;
+            color: #666;
+        }
+        
+        .inputLable input{
+            width: 100%;
+            height: 24px;
+        }
+        
+        .buttonRight{
+            width: 128px;
+            height: 28px;
+            margin : 1px 0px 4px 4px;
+            float: left;
+            color: #26baff;
+        }
+        
+        .bottomLable {
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+
+    <script>
+
+        window.onload=function(){ 
+            let msg="http://" + window.location.host + "/live/stream.wms?type=getoffer";
+            document.getElementById('input1').placeholder = msg;
+            document.getElementById('input1').value = msg;
+        }
+
+        let token;
+        let pc;
+
+        function start() {
+            pc = new RTCPeerConnection()
+
+            pc.oniceconnectionstatechange = e => {
+                console.log(pc.iceConnectionState);
+            }
+
+            pc.onicecandidate = event => {
+                console.log(event);
+            }
+
+            pc.ontrack = event => {
+                console.log("track " + event.track.kind);
+                if (event.track.kind == 'video') {
+                    document.getElementById('remoteVideo').srcObject = event.streams[0]
+                } else {
+                    var el = document.createElement(event.track.kind)
+                    el.srcObject = event.streams[0]
+                    el.autoplay = true
+                    el.controls = true
+                    document.getElementById('remoteVideo').appendChild(el);
+                }
+            }
+
+            var input1 = document.getElementById('input1');
+            var addr = input1.value;
+            let xhr = new XMLHttpRequest();
+            xhr.onload=function() {
+                var data = JSON.parse(xhr.response);
+                // token = data.token;
+                console.log(data.sdp);
+                var desc = new RTCSessionDescription();
+                desc.sdp = data.sdp;
+                desc.type = 'offer';
+                pc.setRemoteDescription(desc);
+                pc.createAnswer().then(
+                    gotDescription2,
+                    onCreateSessionDescriptionError
+                );
+            }
+            xhr.open("GET",addr,true);
+            xhr.send(); 
+        }
+
+        function stop() {
+            console.log('Ending Call' + '\n\n');
+            pc.close();  
+            pc = null;
+        }
+
+        function gotDescription2(desc) {
+            // Provisional answer, set a=inactive & set sdp type to pranswer.
+            /*desc.sdp = desc.sdp.replace(/a=recvonly/g, 'a=inactive');
+            desc.type = 'pranswer';*/
+            pc.setLocalDescription(desc).then(
+                onSetLocalDescriptionSuccess,
+                onSetLocalDescriptionError
+            );
+            console.log('Pranswer from pc2 \n' + desc.sdp);
+            // conn.send(JSON.stringify(desc));
+            // send desc.sdp to server
+        }
+
+        function onCreateSessionDescriptionError(error) {
+            console.log('Failed to create session description: ' + error.toString());
+        }
+
+        function onSetLocalDescriptionSuccess() {
+            console.log('localDescription success.');
+        }
+
+        function onSetLocalDescriptionError(error) {
+            console.log('Failed to set setLocalDescription: ' + error.toString());
+        }
+
+    </script>
+</head>
+<body>
+    <div class="mainContainer">        
+        <p align="center" class="titleLable">Smart_WebRTC Player</p>
+        <video id="remoteVideo" class="videoContainer" controls autoplay></video>
+        <br>        
+        <div class="inputLable">            
+            <input id="input1" type="text" name="IP地址"/>
+            <button id="btn1" class="buttonRight" onclick="start()">start</button>
+            <button id="btn3" class="buttonRight" onclick="stop()">stop</button>        
+        </div>
+        <p align="center" style="color: #67c23a;">QQ交流群 一号群：190583317  二号群：300474021  三号群：271191746，E-mail: cwf12345@sina.com<p>
+        <p align="center" class="bottomLable">
+            <lable>WebSit：<a href="http://www.qiyicc.com/bbs001">www.qiyicc.com</a>  Blog: <a href="https://blog.csdn.net/freeabc">https://blog.csdn.net/freeabc</a>  Github: <a href="https://github.com/superconvert/smart_rtmpd">https://github.com/superconvert/smart_rtmpd</a></label>
+        </p>
+    </div>
+    <br>
+</body>
+</html>
+

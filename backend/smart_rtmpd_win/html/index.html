@@ -1,0 +1,648 @@
+﻿<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>播放器测试</title>
+    <link rel="icon" href="data:;base64,=">
+    <link rel="stylesheet" href="css/element-ui.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-size: 14px;
+            background-color: #ffffff;
+        }
+        ul li {
+            list-style: none;
+        }
+        .title-lable {
+            font-size:16px;
+            color: #8e44ad;
+        }
+        .player-box {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            margin: 48px 48px 12px 48px;
+            background-color: #1c1d30;
+            height: 86vh;
+        }
+        .play-list {
+            overflow: auto;
+            position: relative;
+            display: flex;
+            width: 360px;
+            transition: all .3s;
+        }
+        .el-tree {
+            flex: 1;
+            height: 80%;
+            padding: 8px 8px;
+            background: #1c1d30;
+            color: #bbb;
+        }
+        .el-tree-node:focus>.el-tree-node__content {
+            background-color: #1c1d30;
+            color: #ff5c38;
+        }
+        .el-tree-node__content:hover {
+            background-color: #1c1d30;
+            color: #ff5c38;
+        }
+        .play-list .btn-play {
+            display: block;
+            color: #999;
+        }
+        .play-box {
+            position: relative;
+            flex: 1;
+        }
+        .play-box .arrow {
+            position: absolute;
+            top: 50%;
+            left: -10px;
+            margin-top: -11px;
+            background-color: #36363e;
+            border-top-left-radius: 16px;
+            border-bottom-left-radius: 16px;
+            padding: 5px 0px;
+            color: #bbb;
+            font-size: 12px;
+            z-index: 999;
+        }
+        .play-box #dplayer {
+            width: 100%;
+	    height: 100%;
+        }
+        .play-list::-webkit-scrollbar {
+            width: 5px;
+        }
+        .play-list::-webkit-scrollbar-thumb {
+            border-radius: 10px;
+            background: #535353;
+        }
+        .play-list::-webkit-scrollbar-track {
+            border-radius: 10px;
+            background: #b1b1b1;
+        }
+        .whep-box {
+            width:100%;
+            height:100%;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            margin-bottom: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="player-box" id="app">    
+        <input type="file" id="vodupload" style="display:none;" accept="video/*" onchange="upload_vod()">
+        <div class="play-list" id="play-list" :style="{'width': !toggle ? '0' : lwidth + 'px'}">
+            <el-tree
+                :indent="6"
+                :props="props"
+                :load="load_node"
+                @node-click="btn_play"
+                lazy>
+            </el-tree>
+        </div>
+        <div class="play-box">
+            <a @click="toggle_list" class="arrow" href="javascript:void(0);">
+                <template v-if="toggle">
+                    <i class="el-icon-arrow-left"></i>
+                </template>
+                <template v-else>
+                    <i class="el-icon-arrow-right"></i>
+                </template>
+            </a>
+            <div id="dplayer"></div>
+            <video id="wheplayer" class="whep-box" controls autoplay style="display:none;"></video>
+        </div>
+    </div>
+    <div align="center" class="title-lable">欢迎使用 SMART RTMPD 流服务器 ( 购买带 WEB 管理端版本功能更强大 ) </div>
+    <div align="center" id="footer">
+        <p align="center"style="color: #2980b9;">
+            <label style="margin-right:20px;"><a style="color: #2980b9;" href="http://qiyicc.com">官方站点</a></label>
+            <label style="margin-right:10px;"><a style="color: #2980b9;" href="http://qiyicc.com/bbs001/forum.php">官方论坛</a></label>
+            <label style="margin-left: 10px;"><a style="color: #2980b9;" href="https://gitee.com/superconvert/smart_rtmpd">gitee仓库</a></label>
+            <label style="margin-left: 10px;"><a style="color: #2980b9;" href="https://github.com/superconvert/smart_rtmpd">github仓库</a></label>
+        </p>
+        <p align="center" id="contact" style="color: #27ae60;">1号QQ群: 190583317 --- 2号QQ群：300474021 --- 3 号群：271191746 --- email: cwf12345@sina.com<p>
+    </div>
+    <script src="js/vue.js"></script>
+    <script src="js/element-ui.js"></script>
+    <script src="js/axios.min.js"></script>
+    <script src="js/flv.min.js"></script>
+    <script src="js/hls.min.js"></script>
+    <script src="js/dash.all.min.js"></script>
+    <script src="js/DPlayer.min.js"></script>
+    <script>
+
+        // Get the size of the device screen
+        var screenWidth = screen.width;
+        var screenHeight = screen.height;
+
+        // Get the browser window size
+        var windowWidth = window.innerWidth;
+        var windowHeight = window.innerHeight;
+
+        // Get the size of the entire webpage
+        const pageWidth  = document.documentElement.scrollWidth;
+        const pageHeight = document.documentElement.scrollHeight;
+
+        let width = 180;
+        var isMobile = !!navigator.userAgent.match(/AppleWebKit.*Mobile.*/);
+        if ( isMobile ) {
+            width = screenWidth;
+            let playbox = document.getElementById('app');
+            playbox.style.margin = '10px 10px';
+            let contact = document.getElementById('contact');
+            contact.style = "display:none";
+        }
+
+        // whep 或 webrtc 播放器
+        let pc;
+
+        const app = new Vue({
+            el: '#app',
+            data() {
+                return {
+                    liveUrl: '/api/live',
+                    whipUrl: '/api/whip',
+                    vodUrl: '/api',             // vod 接口
+                    vodPlayUrl: '/',            // vod 播放地址
+                    recUrl: '/api',             // rec 接口
+                    recListUrl: '',
+                    list: [
+                        {
+                            name: '直播列表',
+                            type: 'live'
+                        },
+                        {
+                            name: 'VOD 列表',
+                            type: 'vod',
+                            path: 'vod'
+                        },
+                        {
+                            name: '录像列表',
+                            type: 'rec',
+                            path: 'rec'
+                        },
+                        {
+                            name: 'WHIP 列表',
+                            type: 'whip',
+                            path: 'whip'
+                        },
+                    ],
+                    props: {
+                        label: 'name',
+                        children: 'zones',
+                        isLeaf: 'leaf'
+                    },
+                    toggle: true,             // 列表收缩开关
+                    lwidth: width,            // 列表宽度
+                    dplayer: null,            // 播放器实例
+                }
+            },
+            mounted() {
+                this.init();
+            },
+            methods: {
+                // 初始化
+                init() {
+                     this.dplayer = new DPlayer({
+                        container: document.getElementById('dplayer'),
+                        autoplay: false,
+                        volume: 0.7,
+                        loop: false,
+                        live: false,
+                        video: {
+                            url: this.list[0].url,
+                            type: 'auto'
+                        },
+                    });
+                    if (isMobile) {
+                        // 全屏事件
+                        this.dplayer.on('fullscreen',function() {
+                            screen.orientation.lock("landscape");
+                        });
+                        // 退出全屏事件
+                        this.dplayer.on('fullscreen_cancel',function() {
+                            screen.orientation.unlock();
+                        });
+                    }
+                },
+
+                // 收缩列表
+                toggle_list() {
+                    this.toggle = !this.toggle;
+                },
+
+                // 点击播放
+                async btn_play(item) {
+
+                    console.log('item=', item);
+                    if (item.type === 'subStream') {  // 直播子流
+                        this.dplayer.switchVideo({
+                            url: item.url
+                        });
+			document.getElementById('dplayer').style.display="";
+			document.getElementById('wheplayer').style.display="none";
+                        this.toggle = !this.toggle;
+                        this.dplayer.play();
+                    }
+
+                    if (item.type === 'vodFile') {    // 点播文件
+                        let _url = `${ this.vodPlayUrl }${ item.path }/${ item.url }`;
+                        console.log('url=', _url);
+                        this.dplayer.switchVideo({
+                            url: _url
+                        });
+			document.getElementById('dplayer').style.display="";
+			document.getElementById('wheplayer').style.display="none";
+                        this.toggle = !this.toggle;
+                        this.dplayer.play();
+                    }
+
+                    if (item.type === 'recFile') {    // 录像回放
+                        let _url = `${ this.recListUrl }/${ item.path }`;
+                        console.log('url=', _url);
+                        this.dplayer.switchVideo({
+                            url: _url
+                        });
+			document.getElementById('dplayer').style.display="";
+			document.getElementById('wheplayer').style.display="none";
+                        this.toggle = !this.toggle;
+                        this.dplayer.play();
+                    }
+
+                    if (item.type === 'vodUpload') {  // VOD 文件上传
+                        let input = document.getElementById('vodupload');
+                        input.click();
+                    }
+
+                    if (item.type == 'whipUrl') {
+                        let _url = `${ item.url }`;
+                        console.log('url=', _url);
+                        document.getElementById('dplayer').style.display="none";
+			document.getElementById('wheplayer').style.display="";
+
+                        pc = new RTCPeerConnection();
+                        pc.oniceconnectionstatechange = e => {
+                            console.log(pc.iceConnectionState);
+                        }
+
+                        pc.onicecandidate = event => {
+                            console.log(event);
+                        }
+                        pc.ontrack = event => {
+                            console.log("track " + event.track.kind);
+                            if (event.track.kind == 'video') {
+                                document.getElementById('wheplayer').srcObject = event.streams[0]
+                            } else {
+                                var el = document.createElement(event.track.kind)
+                                el.srcObject = event.streams[0]
+                                el.autoplay = true
+                                el.controls = true
+                                document.getElementById('wheplayer').appendChild(el);
+                           }
+                       }
+
+                       pc.addTransceiver('video', {direction: 'recvonly'});
+                       pc.addTransceiver('audio', {direction: 'recvonly'});
+
+                       const offer = await pc.createOffer();
+                       pc.setLocalDescription(offer);
+                       // Request headers
+                       const headers = {
+                           'Content-Type': 'application/sdp',
+                       };
+
+                       let xhr = new XMLHttpRequest();
+                       xhr.onload=function() {
+                           if (201 == xhr.status) {
+                               var desc = new RTCSessionDescription();
+                               desc.sdp = xhr.response;
+                               desc.type = 'answer';
+                               pc.setRemoteDescription(desc);
+                           } else {
+                               console.log(xhr.statusText);
+                           }
+                       }
+                       xhr.open("POST",  _url);
+                       xhr.setRequestHeader('Content-Type', 'application/sdp');
+                       xhr.send(offer.sdp); 
+                    }
+                },
+
+                // 初始化加载
+                async load_node(node, resolve) {
+                    // console.log('node.level=', node.level);
+                    // console.log('node.data=', node.data);
+
+                    if (node.level === 0) {                      // 初始化一级类
+                        return resolve(this.list);
+                    }
+
+                    if (node.data.type === 'live') {            // 直播流列表
+                        let data = await this.get_live();
+                        // console.log('data=', data);
+                        return resolve(data);
+                    } else if (node.data.type === 'stream') {   // 直播子流列表
+                        let data = await this.get_substream(node.data.url);
+                        // console.log('data=', data);
+                        return resolve(data);
+                    } else if (node.data.type === 'vod') {      // 点播列表
+                        let data = await this.get_vod(node.data);
+                        // console.log('data=', data);
+                        return resolve(data);
+                    } else if (node.data.type === 'vodDir') {   // 点播目录
+                        let data = await this.get_vod(node.data);
+                        // console.log('data=', data);
+                        return resolve(data);
+                    } else if (node.data.type == 'whip') {     // whip 列表
+                        let data = await this.get_whip(node.data);
+                        // console.log('data=', data);
+                        return resolve(data);
+                    } else if (node.data.type == 'rec') {      // 录像查询
+                        let data = await this.get_rec(node.data); 
+                        // console.log('data=', data);
+                        return resolve(data);
+                    } else if (node.data.type == 'recDays') {  // 录像流列表
+                        let data = await this.get_recdays(node.data); 
+                        // console.log('data=', data);
+                        return resolve(data);
+                    } else if (node.data.type == 'recStream' ) {
+                        let data = await this.get_recstream(node.data); 
+                        // console.log('rec data=', data);
+                        return resolve(data);
+                    }
+                },
+
+                // 获取直播流
+                async get_live() {
+                    return new Promise((resolve, reject) => {
+                        axios({
+                            method: 'get',
+                            url: this.liveUrl,
+                        }).then((res) => {
+                            let { stream } = res.data;
+                            let _data = stream.map((item) => {
+                                let _name = item.split('/')[4];
+                                return {
+                                    name: _name,
+                                    url: item,
+                                    type: 'stream'
+                                }
+                            });
+                            resolve(_data);
+                        }).catch((error) => {
+                            console.log('error=', error);
+                        });
+                    });
+                },
+
+                // 获取直播子流
+                async get_substream(url) {
+                    return new Promise((resolve, reject) => {
+                        let _name = url.split('/')[4];
+                        axios({
+                            method: 'get',
+                            url: this.liveUrl,
+                            params: {
+                                name: _name
+                            }
+                        }).then((res) => {
+                            let _data = [];
+                            res.data.urls.forEach((item) => {
+                                if (['ws-flv', 'http-flv', 'http-hls', 'http-dash'].includes(item.type)) {
+                                    _data.push({
+                                        name: item.type,
+                                        url: item.url,
+                                        type: 'subStream',
+                                        leaf: true
+                                    });
+                                }
+                            });
+
+                            resolve(_data);
+                        }).catch((error) => {
+                            console.log('error=', error);
+                        });
+                    });
+                },
+
+                // 获取点播列表
+                async get_vod(nodeData) {
+                    return new Promise((resolve, reject) => {
+                        let _path = nodeData.path;
+                        axios({
+                            method: 'get',
+                            url: `${ this.vodUrl}/${ _path }`,
+                            headers: {
+                                "Content-Type": "application/json"    
+                            },
+                            transformResponse: [function (data) {
+                                if ( data == '' ) {
+                                    return JSON.parse("{}");
+                                }
+                                return JSON.parse(data.replace(/\\/g, "%"));
+                            }]
+                        }).then((res) => {
+                            let _data = [];
+                            _data .push({
+                                name: 'upload',
+                                type: 'vodUpload',
+                                leaf: true
+                            });
+                            if ( res.data.dirs ) {                                
+                                res.data.dirs.forEach((item) => {
+                                    let text = unescape(item);
+                                    _data.push({
+                                        name: text,
+                                        url: text,
+                                        type: 'vodDir',
+                                        path: `${ _path }/${ text }`
+                                    });
+                                });
+                            }
+
+                            if ( res.data.files ) {                            
+                                res.data.files.forEach((item) => {
+                                    let text = unescape(item);
+                                    _data.push({
+                                        name: text,
+                                        url: text,
+                                        type: 'vodFile',
+                                        path: _path,
+                                        leaf: true
+                                    });
+                                });
+                            }
+                            resolve(_data);
+                        }).catch((error) => {
+                            console.log('error=', error);
+                        });
+                    });
+                },
+
+                // 获取录像列表
+                async get_rec(nodeData) {
+                    return new Promise((resolve, reject) => {
+                        let _path = nodeData.path;
+                        axios({
+                            method: 'get',
+                            url: `${ this.recUrl}/${ _path }`,
+                            headers: {
+                                "Content-Type": "application/json"    
+                            },
+                            transformResponse: [function (data) {
+                                if ( data == '' ) {
+                                    return JSON.parse("{}");
+                                }
+                                return JSON.parse(data.replace(/\\/g, "%"));
+                            }]
+                        }).then((res) => {
+                            let _data = [];
+                            if ( res.data.dirs ) {                                
+                                res.data.dirs.forEach((item) => {
+                                    let text = unescape(item);
+                                    _data.push({
+                                        name: text,
+                                        url: text,
+                                        type: 'recDays',
+                                        path: `${ _path }/${ text }`
+                                    });
+                                });
+                            }
+                            resolve(_data);
+                        }).catch((error) => {
+                            console.log('error=', error);
+                        });
+                    });
+                },
+
+                // 获取录像天数信息
+                async get_recdays(nodeData) {
+                    return new Promise((resolve, reject) => {
+                        let _path = nodeData.path;
+                        axios({
+                            method: 'get',
+                            url: `${ this.recListUrl}/${ _path }`,
+                            headers: {
+                                "Content-Type": "application/json"
+                            },
+                            transformResponse: [function (data) {
+                                if ( data == '' ) {
+                                    return JSON.parse("{}");
+                                }
+                                return JSON.parse(data.replace(/\\/g, "%"));
+                            }]
+                        }).then((res) => {
+                            let _data = [];
+                            if ( res.data.dirs ) {                                
+                                res.data.dirs.forEach((item) => {
+                                    let text = unescape(item);
+                                    _data.push({
+                                        name: text,
+                                        url: text,
+                                        type: 'recStream',
+                                        // 录像这天的录像列表 http://192.168.1.1:8080/rec/stream/2021-07-17
+                                        path: `${ _path }/${ text }`
+                                    });
+                                });
+                            }
+                            resolve(_data);
+                        }).catch((error) => {
+                            console.log('error=', error);
+                        });
+                    });
+                },
+
+                // 获取录像流信息
+                async get_recstream(nodeData) {
+                    return new Promise((resolve, reject) => {
+                        let _path = nodeData.path;
+                        axios({
+                            method: 'get',
+                            url: `${ this.recListUrl}/${ _path }`,
+                            headers: {
+                                "Content-Type": "application/json"    
+                            },
+                            transformResponse: [function (data) {
+                                if ( data == '' ) {
+                                    return JSON.parse("{}");
+                                }
+                                return JSON.parse(data.replace(/\\/g, "%"));
+                            }]
+                        }).then((res) => {
+                            let _data = [];
+                            if ( res.data.files ) {                            
+                                res.data.files.forEach((item) => {
+                                    let text = unescape(item);
+                                    let time = text.split('.')[0];
+                                    let ext = text.split('.')[1];
+                                    let root = _path.split('?');
+                                    _data.push({
+                                        name: text,
+                                        url: text,
+                                        type: 'recFile',
+                                        // 录像文件播放地址 http://192.168.1.1:8080/rec/stream/2021-07-17/18-48-00.m3u8
+                                        // stream.m3u8 流的名字和类型, day 那一天的录像 time 那个时段的录像
+                                        path: `${ root[0] }/${ text }`,
+                                        leaf: true
+                                    });
+                                });
+                            }
+                            resolve(_data);
+                        }).catch((error) => {
+                            console.log('error=', error);
+                        });
+                    });
+                },
+
+                // 获取 whip 流信息
+                async get_whip(nodeData) {
+                    return new Promise((resolve, reject) => {
+                        axios({
+                            method: 'get',
+                            url: this.whipUrl,
+                        }).then((res) => {
+                            let { whip } = res.data;
+                            let _data = [];
+                            whip.forEach((item) => {
+                                _data.push({
+                                    name: 'whep: ' + item.app + '/' + item.name,
+                                    url: '/whep/v1?app=' + item.app + '&name=' + item.name,
+                                    type: 'whipUrl',
+                                    leaf: true
+                                });
+                            });
+                            resolve(_data);
+                        }).catch((error) => {
+                            console.log('error=', error);
+                        });
+                    });
+                },
+            }
+        });
+
+        // 上传文件
+        async function upload_vod() {
+            // creating form data object and append file into that form data
+            let formData = new FormData();
+            formData.append("file", vodupload.files[0]);
+            // network request using POST method of fetch
+            await fetch('/vod', {
+                method: "POST",
+                body: formData
+            });
+            alert('You have successfully upload the file!');
+        }
+
+    </script>
+</body>
+</html>

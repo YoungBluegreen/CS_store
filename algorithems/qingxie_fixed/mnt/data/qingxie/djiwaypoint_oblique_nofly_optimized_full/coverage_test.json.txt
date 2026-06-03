@@ -1,0 +1,18 @@
+{
+  "waypoints": [
+    { "latitude": 32.000100, "longitude": 119.000100 },
+    { "latitude": 32.000100, "longitude": 119.000900 },
+    { "latitude": 32.000900, "longitude": 119.000900 },
+    { "latitude": 32.000900, "longitude": 119.000100 }
+  ],
+  "coverageSpacing": 20.0,
+  "globalShootHeight": 80.0,
+  "noFlyAreas": [
+    [
+      { "latitude": 32.00040, "longitude": 119.00040 },
+      { "latitude": 32.00040, "longitude": 119.00060 },
+      { "latitude": 32.00060, "longitude": 119.00060 },
+      { "latitude": 32.00060, "longitude": 119.00040 }
+    ]
+  ]
+}

@@ -1,0 +1,11 @@
+[17:02:30.340] Namespace(Dataset=<class 'datasets.dataset_synapse.Synapse_dataset'>, base_lr=0.0133, batch_size=24, dataset='Synapse', deterministic=1, exp='TU_Synapse224', img_size=224, is_pretrain=True, is_savenii=True, list_dir='/home/ahu/桌面/file/TransFuseNet/TransFuseNet/lists/lists_Synapse', max_epochs=100, max_iterations=20000, n_skip=3, num_classes=6, seed=1234, test_save_dir='/home/ahu/桌面/file/TransUNet(1)/TransUNet/predictions', vit_name='R50-ViT-B_16', vit_patches_size=16, volume_path='/home/ahu/桌面/file/TransFuseNet/TransFuseNet/data/Synapse/test_vol_h5', z_spacing=1)
+[17:02:30.340] transmission
+[17:02:31.322] Model FLOPs: 100666231488
+[17:02:31.322] Model Parameters: 62106342
+[17:02:31.322] Model Parameters (Total): 62.11 M
+[17:15:38.585] Namespace(Dataset=<class 'datasets.dataset_synapse.Synapse_dataset'>, base_lr=0.0133, batch_size=24, dataset='Synapse', deterministic=1, exp='TU_Synapse224', img_size=224, is_pretrain=True, is_savenii=True, list_dir='/home/ahu/桌面/file/TransFuseNet/TransFuseNet/lists/lists_Synapse', max_epochs=100, max_iterations=20000, n_skip=3, num_classes=6, seed=1234, test_save_dir='/home/ahu/桌面/file/TransUNet(1)/TransUNet/predictions', vit_name='R50-ViT-B_16', vit_patches_size=16, volume_path='/home/ahu/桌面/file/TransFuseNet/TransFuseNet/data/Synapse/test_vol_h5', z_spacing=1)
+[17:15:38.586] transmission
+[17:15:39.842] Model FLOPs: 100666231488
+[17:15:39.842] Model Parameters: 62106342
+[17:15:39.842] Model Parameters (Total): 62.11 M
+[17:15:39.843] 226 test iterations per epoch

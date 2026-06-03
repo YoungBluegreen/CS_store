@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<!-- vod 点播 mime 类型定义 -->
+<mime>
+    <item ext="mp4" mime="video/mp4"/>
+    <item ext="mp3" mime="audio/mp3"/>
+</mime>

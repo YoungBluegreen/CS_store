@@ -1,0 +1,40 @@
+{
+  "device": { "type": 89, "subType": 0 },
+  "payload": { "payloadEnumValue": 82 },
+
+  "takeoffPoint": {
+    "longitude": 120.1000,
+    "latitude": 31.1000,
+    "altitude": 0,
+    "aglHeight": 30
+  },
+
+  "templateType": "mapping2d",
+  "autoFlightSpeed": 8,
+  "globalShootHeight": 100,
+  "surfaceRelativeHeight": 100,
+  "globalRTHHeight": 50,
+  "globalWaypointTurnMode": "toPointAndStopWithDiscontinuityCurvature",
+  "globalUseStraightLine": false,
+  "globalWaypointHeadingMode": "followWayline",
+  "globalWaypointHeadingAngle": 0,
+  "finishAction": "goHome",
+
+  "coverageSpacing": 30,
+
+  "waypoints": [
+    { "longitude": 120.1000, "latitude": 31.1000 },
+    { "longitude": 120.1100, "latitude": 31.1000 },
+    { "longitude": 120.1100, "latitude": 31.1100 },
+    { "longitude": 120.1000, "latitude": 31.1100 }
+  ],
+
+  "noFlyAreas": [
+    [
+      { "longitude": 120.1000, "latitude": 31.1000 },
+      { "longitude": 120.1100, "latitude": 31.1000 },
+      { "longitude": 120.1100, "latitude": 31.1100 },
+      { "longitude": 120.1000, "latitude": 31.1100 }
+    ]
+  ]
+}

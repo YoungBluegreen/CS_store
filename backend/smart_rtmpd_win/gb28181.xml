@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<!-- GB28181 配置 -->
+<gb28181>
+    <!-- GB28181 平台间心跳超时 -->
+    <regtimeout>180</regtimeout>
+    <!-- 会话超时 -->
+    <calltimeout>12</calltimeout>
+    <platforms>
+<platform id="34020000002000000001" name="上海市" devid="34020000001110000001" realm="3402000000" passwd="12345678"/>
+<platform id="34020000002000000002" name="北京市" devid="34020000001110000002" realm="3402000001" passwd="12345678"/>
+<platform id="34020000001110000003" name="深圳市" devid="34020000001110000004" realm="bbbbbbbb1234" passwd="12345"/>
+</platforms>
+</gb28181>
