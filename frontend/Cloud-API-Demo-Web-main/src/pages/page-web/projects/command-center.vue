@@ -1,5 +1,12 @@
 <template>
-  <main class="flight-workbench" :class="{ 'day-mode': themeMode === 'day' }">
+  <main
+    class="flight-workbench"
+    :class="{
+      'day-mode': themeMode === 'day',
+      'left-rail-collapsed': isLeftRailCollapsed,
+      'right-rail-collapsed': isRightRailCollapsed,
+    }"
+  >
     <div ref="amapContainer" class="map-canvas"></div>
     <div class="map-overlay"></div>
 
@@ -32,95 +39,123 @@
       <button class="primary-action" @click="openRoute('/task/create-plan')">新建任务</button>
     </header>
 
-    <aside class="resource-panel">
-      <section class="project-card">
-        <div>
+    <aside class="resource-panel side-rail" :class="{ collapsed: isLeftRailCollapsed }">
+      <button
+        class="side-collapse-button left"
+        type="button"
+        @click="isLeftRailCollapsed = !isLeftRailCollapsed"
+      >
+        {{ isLeftRailCollapsed ? '›' : '‹' }}
+      </button>
+
+      <section class="project-card rail-block" :class="{ folded: !isBlockExpanded('project') }">
+        <div class="rail-block-head">
           <strong>合肥高新区巡检</strong>
-          <span>Workspace · 演示项目</span>
+          <div class="block-actions">
+            <em v-if="!isLeftRailCollapsed">在线</em>
+            <button class="block-toggle" type="button" @click="toggleBlock('project')">
+              {{ isBlockExpanded('project') ? '▲' : '▼' }}
+            </button>
+          </div>
         </div>
-        <em>在线</em>
+        <div v-if="!isLeftRailCollapsed && isBlockExpanded('project')" class="rail-block-body project-card-body">
+          <span>Workspace · 演示项目</span>
+          <small>默认选择第一个机场，进入指令飞行前需保持机场选中。</small>
+        </div>
       </section>
 
-      <section class="panel-block">
+      <section class="panel-block rail-block" :class="{ folded: !isBlockExpanded('resources') }">
         <div class="block-head">
           <strong>项目资源</strong>
-          <button @click="openRoute('/workspace')">一张图</button>
-        </div>
-        <div class="resource-switch">
-          <button
-            v-for="tab in resourceTabs"
-            :key="tab.key"
-            :class="{ active: activeResourceTab === tab.key }"
-            @click="activeResourceTab = tab.key"
-          >
-            {{ tab.label }}
-          </button>
-        </div>
-
-        <div v-if="activeResourceTab === 'devices'" class="resource-list">
-          <article
-            v-for="device in devices"
-            :key="device.id"
-            :class="{ active: selectedObject.id === device.id, airport: device.kind === '机场设备' }"
-            @click="selectObject(device)"
-          >
-            <span :class="['resource-dot', device.status]"></span>
-            <div>
-              <strong>{{ device.name }}</strong>
-              <small>{{ device.model }} · {{ device.location }}</small>
-            </div>
-            <em>{{ device.statusText }}</em>
-          </article>
-        </div>
-
-        <div v-if="activeResourceTab === 'devices'" class="airport-command-entry">
-          <div>
-            <span>当前机场</span>
-            <strong>{{ selectedAirport?.name || '未选择机场' }}</strong>
-            <small>{{ commandEntryHint }}</small>
+          <div class="block-actions">
+            <button v-if="!isLeftRailCollapsed" @click="openRoute('/workspace')">一张图</button>
+            <button class="block-toggle" type="button" @click="toggleBlock('resources')">
+              {{ isBlockExpanded('resources') ? '▲' : '▼' }}
+            </button>
           </div>
-          <button :disabled="!canEnterCommandFlight" @click="openCommandFlight">进入指令飞行</button>
         </div>
+        <div v-if="!isLeftRailCollapsed && isBlockExpanded('resources')" class="rail-block-body">
+          <div class="resource-switch">
+            <button
+              v-for="tab in resourceTabs"
+              :key="tab.key"
+              :class="{ active: activeResourceTab === tab.key }"
+              @click="activeResourceTab = tab.key"
+            >
+              {{ tab.label }}
+            </button>
+          </div>
 
-        <div v-else-if="activeResourceTab === 'routes'" class="resource-list">
-          <article
-            v-for="route in routes"
-            :key="route.id"
-            :class="{ active: selectedObject.id === route.id }"
-            @click="selectObject(route)"
-          >
-            <span class="resource-dot route"></span>
-            <div>
-              <strong>{{ route.name }}</strong>
-              <small>{{ route.distance }} · {{ route.points }} 个航点</small>
-            </div>
-            <em>{{ route.statusText }}</em>
-          </article>
-        </div>
+          <div v-if="activeResourceTab === 'devices'" class="resource-list">
+            <article
+              v-for="device in devices"
+              :key="device.id"
+              :class="{ active: selectedObject.id === device.id, airport: device.kind === '机场设备' }"
+              @click="selectObject(device)"
+            >
+              <span :class="['resource-dot', device.status]"></span>
+              <div>
+                <strong>{{ device.name }}</strong>
+                <small>{{ device.model }} · {{ device.location }}</small>
+              </div>
+              <em>{{ device.statusText }}</em>
+            </article>
+          </div>
 
-        <div v-else class="resource-list">
-          <article
-            v-for="layer in layers"
-            :key="layer.id"
-            :class="{ active: selectedObject.id === layer.id }"
-            @click="selectObject(layer)"
-          >
-            <span class="resource-dot layer"></span>
+          <div v-if="activeResourceTab === 'devices'" class="airport-command-entry">
             <div>
-              <strong>{{ layer.name }}</strong>
-              <small>{{ layer.type }} · {{ layer.count }} 个对象</small>
+              <span>当前机场</span>
+              <strong>{{ selectedAirport?.name || '未选择机场' }}</strong>
+              <small>{{ commandEntryHint }}</small>
             </div>
-            <em>{{ layer.visible ? '显示' : '隐藏' }}</em>
-          </article>
+            <button :disabled="!canEnterCommandFlight" @click="openCommandFlight">进入指令飞行</button>
+          </div>
+
+          <div v-else-if="activeResourceTab === 'routes'" class="resource-list">
+            <article
+              v-for="route in routes"
+              :key="route.id"
+              :class="{ active: selectedObject.id === route.id }"
+              @click="selectObject(route)"
+            >
+              <span class="resource-dot route"></span>
+              <div>
+                <strong>{{ route.name }}</strong>
+                <small>{{ route.distance }} · {{ route.points }} 个航点</small>
+              </div>
+              <em>{{ route.statusText }}</em>
+            </article>
+          </div>
+
+          <div v-else class="resource-list">
+            <article
+              v-for="layer in layers"
+              :key="layer.id"
+              :class="{ active: selectedObject.id === layer.id }"
+              @click="selectObject(layer)"
+            >
+              <span class="resource-dot layer"></span>
+              <div>
+                <strong>{{ layer.name }}</strong>
+                <small>{{ layer.type }} · {{ layer.count }} 个对象</small>
+              </div>
+              <em>{{ layer.visible ? '显示' : '隐藏' }}</em>
+            </article>
+          </div>
         </div>
       </section>
 
-      <section class="panel-block compact">
+      <section class="panel-block compact rail-block" :class="{ folded: !isBlockExpanded('seats') }">
         <div class="block-head">
           <strong>在线席位</strong>
-          <button>{{ onlineSeatCount }} 人</button>
+          <div class="block-actions">
+            <button v-if="!isLeftRailCollapsed">{{ onlineSeatCount }} 人</button>
+            <button class="block-toggle" type="button" @click="toggleBlock('seats')">
+              {{ isBlockExpanded('seats') ? '▲' : '▼' }}
+            </button>
+          </div>
         </div>
-        <div class="seat-list">
+        <div v-if="!isLeftRailCollapsed && isBlockExpanded('seats')" class="seat-list rail-block-body">
           <article
             v-for="seat in seatRows"
             :key="seat.id"
@@ -136,12 +171,17 @@
         </div>
       </section>
 
-      <section class="panel-block compact">
+      <section class="panel-block compact rail-block" :class="{ folded: !isBlockExpanded('alerts') }">
         <div class="block-head">
           <strong>告警与协同</strong>
-          <button>全部</button>
+          <div class="block-actions">
+            <button v-if="!isLeftRailCollapsed">全部</button>
+            <button class="block-toggle" type="button" @click="toggleBlock('alerts')">
+              {{ isBlockExpanded('alerts') ? '▲' : '▼' }}
+            </button>
+          </div>
         </div>
-        <div class="alert-stream">
+        <div v-if="!isLeftRailCollapsed && isBlockExpanded('alerts')" class="alert-stream rail-block-body">
           <article v-for="alert in alerts" :key="alert.id">
             <span :class="alert.level"></span>
             <div>
@@ -185,25 +225,46 @@
       </div>
     </section>
 
-    <aside class="inspector-panel">
-      <section class="selected-card">
-        <div class="object-type">{{ selectedObject.kind }}</div>
-        <h2>{{ selectedObject.name }}</h2>
-        <p>{{ selectedObject.description }}</p>
-        <div class="object-meta">
-          <div v-for="item in selectedObject.meta" :key="item.label">
-            <span>{{ item.label }}</span>
-            <strong>{{ item.value }}</strong>
+    <aside class="inspector-panel side-rail" :class="{ collapsed: isRightRailCollapsed }">
+      <button
+        class="side-collapse-button right"
+        type="button"
+        @click="isRightRailCollapsed = !isRightRailCollapsed"
+      >
+        {{ isRightRailCollapsed ? '‹' : '›' }}
+      </button>
+
+      <section class="selected-card rail-block" :class="{ folded: !isBlockExpanded('selected') }">
+        <div class="block-head">
+          <strong>{{ selectedObject.kind }}</strong>
+          <button class="block-toggle" type="button" @click="toggleBlock('selected')">
+            {{ isBlockExpanded('selected') ? '▲' : '▼' }}
+          </button>
+        </div>
+        <div v-if="!isRightRailCollapsed && isBlockExpanded('selected')" class="rail-block-body">
+          <div class="object-type">{{ selectedObject.kind }}</div>
+          <h2>{{ selectedObject.name }}</h2>
+          <p>{{ selectedObject.description }}</p>
+          <div class="object-meta">
+            <div v-for="item in selectedObject.meta" :key="item.label">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+            </div>
           </div>
         </div>
       </section>
 
-      <section class="panel-block">
+      <section class="panel-block rail-block" :class="{ folded: !isBlockExpanded('actions') }">
         <div class="block-head">
           <strong>快捷操作</strong>
-          <button @click="openDetailRoute">详情</button>
+          <div class="block-actions">
+            <button v-if="!isRightRailCollapsed" @click="openDetailRoute">详情</button>
+            <button class="block-toggle" type="button" @click="toggleBlock('actions')">
+              {{ isBlockExpanded('actions') ? '▲' : '▼' }}
+            </button>
+          </div>
         </div>
-        <div class="action-grid">
+        <div v-if="!isRightRailCollapsed && isBlockExpanded('actions')" class="action-grid rail-block-body">
           <button @click="openRoute('/devices')">设备列表</button>
           <button @click="openRoute('/wayline')">航线库</button>
           <button @click="openRoute('/task')">计划库</button>
@@ -211,12 +272,17 @@
         </div>
       </section>
 
-      <section class="panel-block">
+      <section class="panel-block rail-block" :class="{ folded: !isBlockExpanded('params') }">
         <div class="block-head">
           <strong>任务参数</strong>
-          <button @click="openRoute('/task/create-plan')">编辑</button>
+          <div class="block-actions">
+            <button v-if="!isRightRailCollapsed" @click="openRoute('/task/create-plan')">编辑</button>
+            <button class="block-toggle" type="button" @click="toggleBlock('params')">
+              {{ isBlockExpanded('params') ? '▲' : '▼' }}
+            </button>
+          </div>
         </div>
-        <div class="param-list">
+        <div v-if="!isRightRailCollapsed && isBlockExpanded('params')" class="param-list rail-block-body">
           <div v-for="param in taskParams" :key="param.label">
             <span>{{ param.label }}</span>
             <strong>{{ param.value }}</strong>
@@ -224,12 +290,17 @@
         </div>
       </section>
 
-      <section class="panel-block media-preview">
+      <section class="panel-block media-preview rail-block" :class="{ folded: !isBlockExpanded('media') }">
         <div class="block-head">
           <strong>媒体回传</strong>
-          <button @click="openRoute('/media')">查看</button>
+          <div class="block-actions">
+            <button v-if="!isRightRailCollapsed" @click="openRoute('/media')">查看</button>
+            <button class="block-toggle" type="button" @click="toggleBlock('media')">
+              {{ isBlockExpanded('media') ? '▲' : '▼' }}
+            </button>
+          </div>
         </div>
-        <div class="media-grid">
+        <div v-if="!isRightRailCollapsed && isBlockExpanded('media')" class="media-grid rail-block-body">
           <div v-for="media in mediaItems" :key="media.id">
             <span>{{ media.type }}</span>
             <strong>{{ media.name }}</strong>
@@ -278,6 +349,7 @@ import {
 type ResourceTab = 'devices' | 'routes' | 'layers'
 type ModuleKey = 'project' | 'map' | 'annotation' | 'team' | 'media' | 'command'
 type WorkMode = 'overview' | 'planning' | 'live'
+type BlockKey = 'project' | 'resources' | 'seats' | 'alerts' | 'selected' | 'actions' | 'params' | 'media'
 
 interface WorkbenchObject {
   id: string
@@ -310,6 +382,18 @@ const selectedTool = ref('图层')
 const themeMode = ref<'night' | 'day'>('night')
 const selectedAirportId = ref(commandAirports[0]?.id || '')
 const activeOperatorId = ref(commandOperators[0]?.id || '')
+const isLeftRailCollapsed = ref(false)
+const isRightRailCollapsed = ref(false)
+const expandedBlocks = ref<Record<BlockKey, boolean>>({
+  project: true,
+  resources: true,
+  seats: true,
+  alerts: true,
+  selected: true,
+  actions: true,
+  params: true,
+  media: true,
+})
 
 const modules = [
   { key: 'project' as const, label: '项目' },
@@ -546,6 +630,14 @@ function updateClock () {
 
 function openRoute (path: string) {
   router.push(path)
+}
+
+function isBlockExpanded (block: BlockKey) {
+  return expandedBlocks.value[block]
+}
+
+function toggleBlock (block: BlockKey) {
+  expandedBlocks.value[block] = !expandedBlocks.value[block]
 }
 
 function openCommandFlight () {
@@ -838,6 +930,8 @@ button {
 .primary-action,
 .theme-toggle,
 .block-head button,
+.block-toggle,
+.side-collapse-button,
 .action-grid button,
 .global-search button {
   border: 1px solid var(--workbench-border);
@@ -912,10 +1006,17 @@ button {
 .inspector-panel {
   top: 78px;
   bottom: 116px;
-  width: 318px;
+  width: 326px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--workbench-border);
+  background: rgba(2, 18, 36, 0.58);
+  box-shadow: var(--workbench-soft-shadow);
+  backdrop-filter: blur(12px);
+  transition: width 0.22s ease, padding 0.22s ease;
+  overflow: auto;
 }
 
 .resource-panel {
@@ -925,6 +1026,38 @@ button {
 .inspector-panel {
   right: 14px;
   width: 336px;
+}
+
+.flight-workbench.day-mode .resource-panel,
+.flight-workbench.day-mode .inspector-panel {
+  background: rgba(237, 248, 253, 0.72);
+}
+
+.side-rail.collapsed {
+  width: 58px;
+  padding: 42px 6px 8px;
+  overflow: hidden;
+}
+
+.side-collapse-button {
+  position: absolute;
+  top: 8px;
+  z-index: 5;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: #62e6ff;
+  background: rgba(0, 72, 120, 0.62);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.side-collapse-button.left {
+  right: 8px;
+}
+
+.side-collapse-button.right {
+  left: 8px;
 }
 
 .project-card,
@@ -941,12 +1074,22 @@ button {
   backdrop-filter: blur(10px);
 }
 
+.project-card,
+.panel-block,
+.selected-card {
+  border-color: rgba(0, 216, 255, 0.14);
+  background: rgba(0, 24, 48, 0.3);
+  box-shadow: none;
+}
+
+.flight-workbench.day-mode .project-card,
+.flight-workbench.day-mode .panel-block,
+.flight-workbench.day-mode .selected-card {
+  background: rgba(236, 247, 253, 0.52);
+}
+
 .project-card {
-  min-height: 72px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px;
+  min-height: 0;
 }
 
 .project-card strong,
@@ -981,11 +1124,26 @@ button {
   padding: 12px;
 }
 
+.project-card {
+  padding: 12px;
+}
+
 .panel-block.compact {
   min-height: 0;
   flex: 1;
 }
 
+.rail-block {
+  position: relative;
+  transition: min-height 0.18s ease, padding 0.18s ease, background 0.18s ease;
+}
+
+.rail-block.folded {
+  min-height: 48px;
+  flex: 0 0 auto;
+}
+
+.rail-block-head,
 .block-head {
   display: flex;
   align-items: center;
@@ -993,14 +1151,80 @@ button {
   margin-bottom: 10px;
 }
 
+.rail-block.folded .block-head,
+.rail-block.folded .rail-block-head {
+  margin-bottom: 0;
+}
+
+.rail-block-head strong,
 .block-head strong {
   padding-left: 9px;
   border-left: 3px solid #00d8ff;
 }
 
+.block-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .block-head button {
   height: 26px;
   padding: 0 9px;
+}
+
+.block-toggle {
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  color: #62e6ff;
+  background: rgba(0, 52, 92, 0.46);
+}
+
+.rail-block-body {
+  min-width: 0;
+}
+
+.project-card-body {
+  display: grid;
+  gap: 6px;
+  color: var(--workbench-muted);
+}
+
+.project-card-body small {
+  color: var(--workbench-muted);
+  line-height: 1.5;
+}
+
+.side-rail.collapsed .rail-block {
+  min-height: 92px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px;
+}
+
+.side-rail.collapsed .block-head,
+.side-rail.collapsed .rail-block-head {
+  justify-content: center;
+  margin: 0;
+}
+
+.side-rail.collapsed .block-head strong,
+.side-rail.collapsed .rail-block-head strong {
+  width: 18px;
+  padding: 0;
+  border-left: 0;
+  color: var(--workbench-title);
+  font-size: 13px;
+  line-height: 1.2;
+  text-align: center;
+  writing-mode: vertical-rl;
+}
+
+.side-rail.collapsed .block-actions,
+.side-rail.collapsed .block-toggle {
+  display: none;
 }
 
 .resource-switch {
@@ -1202,6 +1426,18 @@ button {
   padding: 0 14px;
 }
 
+.left-rail-collapsed .map-status-strip,
+.left-rail-collapsed .mission-ribbon,
+.left-rail-collapsed .timeline-panel {
+  left: 96px;
+}
+
+.right-rail-collapsed .map-status-strip,
+.right-rail-collapsed .layer-toolbar,
+.right-rail-collapsed .timeline-panel {
+  right: 96px;
+}
+
 .map-status-strip span {
   color: var(--workbench-text);
 }
@@ -1230,7 +1466,7 @@ button {
   padding: 0 18px;
 }
 
-.selected-card {
+.selected-card:not(.folded) {
   min-height: 180px;
 }
 
@@ -1414,6 +1650,22 @@ button {
     width: 310px;
   }
 
+  .side-rail.collapsed {
+    width: 58px !important;
+  }
+
+  .left-rail-collapsed .map-status-strip,
+  .left-rail-collapsed .mission-ribbon,
+  .left-rail-collapsed .timeline-panel {
+    left: 96px;
+  }
+
+  .right-rail-collapsed .map-status-strip,
+  .right-rail-collapsed .layer-toolbar,
+  .right-rail-collapsed .timeline-panel {
+    right: 96px;
+  }
+
   .map-status-strip,
   .mission-ribbon,
   .timeline-panel {
@@ -1450,6 +1702,22 @@ button {
     bottom: 104px;
     right: 10px;
     width: 280px;
+  }
+
+  .side-rail.collapsed {
+    width: 58px !important;
+  }
+
+  .left-rail-collapsed .map-status-strip,
+  .left-rail-collapsed .mission-ribbon,
+  .left-rail-collapsed .timeline-panel {
+    left: 84px;
+  }
+
+  .right-rail-collapsed .map-status-strip,
+  .right-rail-collapsed .layer-toolbar,
+  .right-rail-collapsed .timeline-panel {
+    right: 84px;
   }
 
   .map-status-strip,
