@@ -50,17 +50,8 @@
               <div class="runway"></div>
               <div class="terrain-line line-a"></div>
               <div class="terrain-line line-b"></div>
-              <div class="waypoint waypoint-a">A</div>
-              <div class="waypoint waypoint-b">B</div>
-              <div class="target-box">
-                <span></span>
-                <strong>目标巡检点</strong>
-              </div>
             </div>
             <div class="drone-avatar" :style="droneStyle">
-              <span></span>
-            </div>
-            <div class="flight-vector" :style="flightVectorStyle">
               <span></span>
             </div>
             <button
@@ -80,7 +71,6 @@
             </div>
             <div class="overview-body">
               <div class="map-grid"></div>
-              <div class="map-route"></div>
               <div class="map-home">H</div>
               <div class="map-target">T</div>
               <div class="map-drone" :style="mapDroneStyle"></div>
@@ -123,13 +113,6 @@
               <span>偏航 {{ Math.round(gimbalState.pan) }}°</span>
               <span>俯仰 {{ Math.round(gimbalState.tilt) }}°</span>
             </div>
-          </div>
-          <div v-if="primaryView === 'fpv'" class="pitch-ladder">
-            <span>+20</span>
-            <span>+10</span>
-            <strong>0</strong>
-            <span>-10</span>
-            <span>-20</span>
           </div>
           <div class="speed-tape glass-panel">
             <span>SPD</span>
@@ -201,30 +184,6 @@
             <component :is="command.icon" />
             <span>{{ command.label }}</span>
           </button>
-        </div>
-        <div class="gimbal-console">
-          <div class="keyboard-title">
-            <strong>云台 / 相机</strong>
-            <span>{{ cameraState.recording ? 'REC' : cameraState.mode }}</span>
-          </div>
-          <div class="camera-stats">
-            <div>
-              <span>俯仰</span>
-              <strong>{{ Math.round(gimbalState.tilt) }}°</strong>
-            </div>
-            <div>
-              <span>偏航</span>
-              <strong>{{ Math.round(gimbalState.pan) }}°</strong>
-            </div>
-            <div>
-              <span>变焦</span>
-              <strong>{{ cameraState.zoom.toFixed(1) }}x</strong>
-            </div>
-            <div>
-              <span>曝光</span>
-              <strong>{{ cameraState.ev > 0 ? '+' : '' }}{{ cameraState.ev.toFixed(1) }}</strong>
-            </div>
-          </div>
         </div>
         <div class="keyboard-console" :class="{ locked: !manualControl }">
           <div class="keyboard-title">
@@ -428,10 +387,6 @@ const simWorldStyle = computed(() => ({
 }))
 
 const droneStyle = computed(() => ({
-  transform: `translate(${flightState.x.toFixed(1)}px, ${flightState.y.toFixed(1)}px) rotate(${headingDelta.value.toFixed(1)}deg)`,
-}))
-
-const flightVectorStyle = computed(() => ({
   transform: `translate(-50%, -50%) rotate(${headingDelta.value.toFixed(1)}deg)`,
 }))
 
@@ -1089,10 +1044,7 @@ button {
   opacity: 0.82;
 }
 
-.fpv-view.is-mini .waypoint,
-.fpv-view.is-mini .target-box,
-.fpv-view.is-mini .drone-avatar,
-.fpv-view.is-mini .flight-vector {
+.fpv-view.is-mini .drone-avatar {
   display: none;
 }
 
@@ -1314,27 +1266,6 @@ button {
   background-size: 72px 72px;
 }
 
-.map-route {
-  position: absolute;
-  left: 22px;
-  right: 28px;
-  top: 78px;
-  height: 2px;
-  background: #9dff7a;
-  transform: rotate(-28deg);
-  transform-origin: left;
-  box-shadow: 0 0 12px rgba(157, 255, 122, 0.6);
-}
-
-.map-view.is-main .map-route {
-  left: 12%;
-  right: 14%;
-  top: 58%;
-  height: 3px;
-  transform: rotate(-22deg);
-  box-shadow: 0 0 18px rgba(157, 255, 122, 0.72);
-}
-
 .map-home,
 .map-target,
 .map-drone {
@@ -1465,60 +1396,10 @@ button {
   transform: rotate(24deg);
 }
 
-.waypoint,
-.target-box {
-  position: absolute;
-  display: grid;
-  place-items: center;
-  color: #07192e;
-  font-weight: 800;
-}
-
-.waypoint {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: #72f2ff;
-  box-shadow: 0 0 22px rgba(114, 242, 255, 0.72);
-}
-
-.waypoint-a {
-  top: 22%;
-  left: 22%;
-}
-
-.waypoint-b {
-  right: 23%;
-  bottom: 28%;
-}
-
-.target-box {
-  top: 25%;
-  right: 17%;
-  width: 108px;
-  height: 78px;
-  border: 2px solid #9dff7a;
-  color: #dffaff;
-  background: rgba(65, 255, 133, 0.08);
-  box-shadow: 0 0 22px rgba(93, 255, 144, 0.28);
-}
-
-.target-box span {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #9dff7a;
-  box-shadow: 0 0 16px #9dff7a;
-}
-
-.target-box strong {
-  font-size: 12px;
-}
-
 .drone-avatar {
   position: absolute;
-  left: calc(50% - 22px);
-  top: calc(50% - 22px);
+  left: 50%;
+  top: 50%;
   z-index: 3;
   width: 44px;
   height: 44px;
@@ -1572,45 +1453,6 @@ button {
   transform: translateX(-50%);
 }
 
-.flight-vector {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 112px;
-  height: 112px;
-  transform: translate(-50%, -50%);
-  border: 2px solid #72f2ff;
-  border-radius: 50%;
-  box-shadow: 0 0 22px rgba(114, 242, 255, 0.45);
-  transition: transform 0.08s linear;
-}
-
-.flight-vector::before,
-.flight-vector::after,
-.flight-vector span {
-  content: "";
-  position: absolute;
-  top: 50%;
-  width: 86px;
-  height: 2px;
-  background: #72f2ff;
-}
-
-.flight-vector::before {
-  right: 100%;
-}
-
-.flight-vector::after {
-  left: 100%;
-}
-
-.flight-vector span {
-  left: 50%;
-  width: 2px;
-  height: 54px;
-  transform: translate(-50%, -100%);
-}
-
 .sim-readout {
   position: absolute;
   left: 50%;
@@ -1634,8 +1476,6 @@ button {
   font-size: 12px;
 }
 
-.flight-vector,
-.pitch-ladder,
 .speed-tape,
 .altitude-tape,
 .heading-scale {
@@ -1652,23 +1492,6 @@ button {
 .altitude-tape strong {
   min-width: 66px;
   text-align: center;
-}
-
-.pitch-ladder {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  display: grid;
-  gap: 22px;
-  transform: translate(-50%, -50%);
-  color: rgba(223, 250, 255, 0.78);
-  text-align: center;
-}
-
-.pitch-ladder span,
-.pitch-ladder strong {
-  width: 170px;
-  border-top: 1px solid rgba(114, 242, 255, 0.65);
 }
 
 .speed-tape,
@@ -1954,40 +1777,6 @@ button {
   padding: 12px;
   border: 1px solid rgba(76, 221, 255, 0.16);
   background: rgba(0, 22, 43, 0.42);
-}
-
-.gimbal-console {
-  margin-top: 10px;
-  padding: 12px;
-  border: 1px solid rgba(76, 221, 255, 0.16);
-  background: rgba(0, 22, 43, 0.42);
-}
-
-.camera-stats {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  margin-top: 0;
-}
-
-.camera-stats div {
-  min-height: 48px;
-  display: grid;
-  align-content: center;
-  gap: 4px;
-  padding: 8px;
-  border: 1px solid rgba(76, 221, 255, 0.16);
-  background: rgba(7, 33, 60, 0.5);
-}
-
-.camera-stats span {
-  color: rgba(223, 250, 255, 0.62);
-  font-size: 12px;
-}
-
-.camera-stats strong {
-  color: #fff;
-  font-family: Consolas, monospace;
 }
 
 .keyboard-title {
