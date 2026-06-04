@@ -43,7 +43,7 @@
       <button
         class="side-collapse-button left"
         type="button"
-        @click="isLeftRailCollapsed = !isLeftRailCollapsed"
+        @click="toggleLeftRail"
       >
         {{ isLeftRailCollapsed ? '›' : '‹' }}
       </button>
@@ -229,7 +229,7 @@
       <button
         class="side-collapse-button right"
         type="button"
-        @click="isRightRailCollapsed = !isRightRailCollapsed"
+        @click="toggleRightRail"
       >
         {{ isRightRailCollapsed ? '‹' : '›' }}
       </button>
@@ -335,7 +335,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AMapLoader from '@amap/amap-jsapi-loader'
 import { AMapConfig } from '/@/constants'
@@ -350,6 +350,23 @@ type ResourceTab = 'devices' | 'routes' | 'layers'
 type ModuleKey = 'project' | 'map' | 'annotation' | 'team' | 'media' | 'command'
 type WorkMode = 'overview' | 'planning' | 'live'
 type BlockKey = 'project' | 'resources' | 'seats' | 'alerts' | 'selected' | 'actions' | 'params' | 'media'
+type ThemeMode = 'night' | 'day'
+
+interface PersistedWorkbenchState {
+  activeModule?: ModuleKey
+  activeResourceTab?: ResourceTab
+  activeWorkMode?: WorkMode
+  selectedTool?: string
+  themeMode?: ThemeMode
+  selectedAirportId?: string
+  activeOperatorId?: string
+  selectedObjectId?: string
+  isLeftRailCollapsed?: boolean
+  isRightRailCollapsed?: boolean
+  expandedBlocks?: Partial<Record<BlockKey, boolean>>
+  mapCenter?: [number, number]
+  mapZoom?: number
+}
 
 interface WorkbenchObject {
   id: string
@@ -367,6 +384,13 @@ interface DeviceResource extends WorkbenchObject {
   statusText: string
 }
 
+const WORKBENCH_STATE_KEY = 'uav-command-center-workbench-state'
+const defaultMapCenter: [number, number] = [117.283, 31.874]
+const defaultMapZoom = 12
+const savedMapCenter = ref<[number, number]>(defaultMapCenter)
+const savedMapZoom = ref(defaultMapZoom)
+const hasSavedMapView = ref(false)
+
 const router = useRouter()
 const amapContainer = ref<HTMLDivElement | null>(null)
 const amapInstance = shallowRef<any>(null)
@@ -375,16 +399,8 @@ const clockTimer = ref<number | null>(null)
 const mapLoadError = ref('')
 const currentTime = ref('')
 const keyword = ref('')
-const activeModule = ref<ModuleKey>('project')
-const activeResourceTab = ref<ResourceTab>('devices')
-const activeWorkMode = ref<WorkMode>('overview')
-const selectedTool = ref('图层')
-const themeMode = ref<'night' | 'day'>('night')
-const selectedAirportId = ref(commandAirports[0]?.id || '')
-const activeOperatorId = ref(commandOperators[0]?.id || '')
-const isLeftRailCollapsed = ref(false)
-const isRightRailCollapsed = ref(false)
-const expandedBlocks = ref<Record<BlockKey, boolean>>({
+const persistedState = readPersistedWorkbenchState()
+const defaultExpandedBlocks: Record<BlockKey, boolean> = {
   project: true,
   resources: true,
   seats: true,
@@ -393,7 +409,24 @@ const expandedBlocks = ref<Record<BlockKey, boolean>>({
   actions: true,
   params: true,
   media: true,
+}
+const activeModule = ref<ModuleKey>(persistedState.activeModule || 'project')
+const activeResourceTab = ref<ResourceTab>(persistedState.activeResourceTab || 'devices')
+const activeWorkMode = ref<WorkMode>(persistedState.activeWorkMode || 'overview')
+const selectedTool = ref(persistedState.selectedTool || '图层')
+const themeMode = ref<ThemeMode>(persistedState.themeMode || 'night')
+const selectedAirportId = ref(persistedState.selectedAirportId || commandAirports[0]?.id || '')
+const activeOperatorId = ref(persistedState.activeOperatorId || commandOperators[0]?.id || '')
+const isLeftRailCollapsed = ref(Boolean(persistedState.isLeftRailCollapsed))
+const isRightRailCollapsed = ref(Boolean(persistedState.isRightRailCollapsed))
+const expandedBlocks = ref<Record<BlockKey, boolean>>({
+  ...defaultExpandedBlocks,
+  ...(persistedState.expandedBlocks || {}),
 })
+
+if (persistedState.mapCenter) savedMapCenter.value = persistedState.mapCenter
+if (typeof persistedState.mapZoom === 'number') savedMapZoom.value = persistedState.mapZoom
+hasSavedMapView.value = Boolean(persistedState.mapCenter || typeof persistedState.mapZoom === 'number')
 
 const modules = [
   { key: 'project' as const, label: '项目' },
@@ -589,7 +622,7 @@ const mediaItems = [
   { id: 'm3', type: 'VID', name: '热成像复核.mp4' },
 ]
 
-const selectedObject = ref<WorkbenchObject>(devices[0])
+const selectedObject = ref<WorkbenchObject>(findWorkbenchObjectById(persistedState.selectedObjectId) || devices[0])
 
 const selectedAirport = computed(() => commandAirports.find(airport => airport.id === selectedAirportId.value) || null)
 
@@ -628,7 +661,69 @@ function updateClock () {
   currentTime.value = new Date().toLocaleTimeString('zh-CN', { hour12: false })
 }
 
+function readPersistedWorkbenchState (): PersistedWorkbenchState {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = window.localStorage.getItem(WORKBENCH_STATE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as PersistedWorkbenchState
+    if (!parsed || typeof parsed !== 'object') return {}
+    if (!Array.isArray(parsed.mapCenter) || parsed.mapCenter.length !== 2) {
+      delete parsed.mapCenter
+    }
+    return parsed
+  } catch {
+    return {}
+  }
+}
+
+function persistWorkbenchState () {
+  if (typeof window === 'undefined') return
+  const state: PersistedWorkbenchState = {
+    activeModule: activeModule.value,
+    activeResourceTab: activeResourceTab.value,
+    activeWorkMode: activeWorkMode.value,
+    selectedTool: selectedTool.value,
+    themeMode: themeMode.value,
+    selectedAirportId: selectedAirportId.value,
+    activeOperatorId: activeOperatorId.value,
+    selectedObjectId: selectedObject.value.id,
+    isLeftRailCollapsed: isLeftRailCollapsed.value,
+    isRightRailCollapsed: isRightRailCollapsed.value,
+    expandedBlocks: expandedBlocks.value,
+    mapCenter: savedMapCenter.value,
+    mapZoom: savedMapZoom.value,
+  }
+  window.localStorage.setItem(WORKBENCH_STATE_KEY, JSON.stringify(state))
+}
+
+watch(
+  [
+    activeModule,
+    activeResourceTab,
+    activeWorkMode,
+    selectedTool,
+    themeMode,
+    selectedAirportId,
+    activeOperatorId,
+    isLeftRailCollapsed,
+    isRightRailCollapsed,
+    expandedBlocks,
+    savedMapCenter,
+    savedMapZoom,
+    () => selectedObject.value.id,
+  ],
+  persistWorkbenchState,
+  { deep: true },
+)
+
+function findWorkbenchObjectById (id?: string) {
+  if (!id) return null
+  return [...devices, ...routes, ...layers].find(resource => resource.id === id) || null
+}
+
 function openRoute (path: string) {
+  persistWorkbenchState()
   router.push(path)
 }
 
@@ -638,14 +733,27 @@ function isBlockExpanded (block: BlockKey) {
 
 function toggleBlock (block: BlockKey) {
   expandedBlocks.value[block] = !expandedBlocks.value[block]
+  persistWorkbenchState()
+}
+
+function toggleLeftRail () {
+  isLeftRailCollapsed.value = !isLeftRailCollapsed.value
+  persistWorkbenchState()
+}
+
+function toggleRightRail () {
+  isRightRailCollapsed.value = !isRightRailCollapsed.value
+  persistWorkbenchState()
 }
 
 function openCommandFlight () {
   if (!selectedAirport.value) {
     activeResourceTab.value = 'devices'
+    persistWorkbenchState()
     return
   }
   const operator = activeOperator.value || getOperatorForAirport(selectedAirport.value.id)
+  persistWorkbenchState()
   router.push({
     path: '/command-flight',
     query: {
@@ -689,6 +797,7 @@ function selectTool (tool: string) {
   if (!map) return
   if (tool === '回放') map.setZoomAndCenter(13, [117.283, 31.874])
   if (tool === '测距') map.setZoom(14)
+  window.setTimeout(syncMapViewState)
 }
 
 function applyThemeToMap () {
@@ -700,6 +809,23 @@ function applyThemeToMap () {
 function toggleTheme () {
   themeMode.value = themeMode.value === 'day' ? 'night' : 'day'
   applyThemeToMap()
+}
+
+function syncMapViewState () {
+  const map = mapInstance.value
+  if (!map) return
+  const center = map.getCenter?.()
+  const lng = Number(center?.lng ?? center?.getLng?.())
+  const lat = Number(center?.lat ?? center?.getLat?.())
+  const zoom = Number(map.getZoom?.())
+  if (Number.isFinite(lng) && Number.isFinite(lat)) {
+    savedMapCenter.value = [lng, lat]
+    hasSavedMapView.value = true
+  }
+  if (Number.isFinite(zoom)) {
+    savedMapZoom.value = zoom
+    hasSavedMapView.value = true
+  }
 }
 
 function createMarker (AMap: any, item: { id: string, name: string, position: number[], type: string }) {
@@ -748,7 +874,12 @@ function renderMapOverlays (AMap: any, map: any) {
   })
 
   map.add([routeLine, taskArea, ...markers])
-  map.setFitView([routeLine, taskArea, ...markers], false, [110, 430, 180, 340])
+  if (hasSavedMapView.value) {
+    map.setZoomAndCenter(savedMapZoom.value, savedMapCenter.value)
+  } else {
+    map.setFitView([routeLine, taskArea, ...markers], false, [110, 430, 180, 340])
+    window.setTimeout(syncMapViewState)
+  }
 }
 
 async function initAmap () {
@@ -771,6 +902,8 @@ async function initAmap () {
     })
     mapInstance.value = map
     renderMapOverlays(AMap, map)
+    map.on('moveend', syncMapViewState)
+    map.on('zoomend', syncMapViewState)
   } catch (error: any) {
     mapLoadError.value = error?.message || '请检查高德地图 Key、网络或域名白名单配置。'
   }
