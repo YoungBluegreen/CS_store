@@ -12,7 +12,7 @@
         <button
           v-for="module in modules"
           :key="module.key"
-          :class="{ active: activeModule === module.key }"
+          :class="{ active: activeModule === module.key, disabled: module.key === 'command' && !canEnterCommandFlight }"
           @click="selectModule(module.key)"
         >
           {{ module.label }}
@@ -61,7 +61,7 @@
           <article
             v-for="device in devices"
             :key="device.id"
-            :class="{ active: selectedObject.id === device.id }"
+            :class="{ active: selectedObject.id === device.id, airport: device.kind === '机场设备' }"
             @click="selectObject(device)"
           >
             <span :class="['resource-dot', device.status]"></span>
@@ -71,6 +71,15 @@
             </div>
             <em>{{ device.statusText }}</em>
           </article>
+        </div>
+
+        <div v-if="activeResourceTab === 'devices'" class="airport-command-entry">
+          <div>
+            <span>当前机场</span>
+            <strong>{{ selectedAirport?.name || '未选择机场' }}</strong>
+            <small>{{ commandEntryHint }}</small>
+          </div>
+          <button :disabled="!canEnterCommandFlight" @click="openCommandFlight">进入指令飞行</button>
         </div>
 
         <div v-else-if="activeResourceTab === 'routes'" class="resource-list">
@@ -102,6 +111,27 @@
               <small>{{ layer.type }} · {{ layer.count }} 个对象</small>
             </div>
             <em>{{ layer.visible ? '显示' : '隐藏' }}</em>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel-block compact">
+        <div class="block-head">
+          <strong>在线席位</strong>
+          <button>{{ onlineSeatCount }} 人</button>
+        </div>
+        <div class="seat-list">
+          <article
+            v-for="seat in seatRows"
+            :key="seat.id"
+            :class="{ active: activeOperatorId === seat.id }"
+            @click="selectSeat(seat.id, seat.airportId)"
+          >
+            <span class="seat-dot" :style="{ background: seat.color, color: seat.color }"></span>
+            <div>
+              <strong>{{ seat.name }} · {{ seat.role }}</strong>
+              <small>{{ seat.airportName }} · {{ seat.statusText }}</small>
+            </div>
           </article>
         </div>
       </section>
@@ -177,7 +207,7 @@
           <button @click="openRoute('/devices')">设备列表</button>
           <button @click="openRoute('/wayline')">航线库</button>
           <button @click="openRoute('/task')">计划库</button>
-          <button @click="openRoute('/media')">媒体库</button>
+          <button :disabled="!canEnterCommandFlight" @click="openCommandFlight">指令飞行</button>
         </div>
       </section>
 
@@ -238,6 +268,12 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 
 import { useRouter } from 'vue-router'
 import AMapLoader from '@amap/amap-jsapi-loader'
 import { AMapConfig } from '/@/constants'
+import {
+  commandAirports,
+  commandOperators,
+  getOperatorForAirport,
+  type CommandOperator,
+} from './command-flight-context'
 
 type ResourceTab = 'devices' | 'routes' | 'layers'
 type ModuleKey = 'project' | 'map' | 'annotation' | 'team' | 'media' | 'command'
@@ -250,6 +286,13 @@ interface WorkbenchObject {
   description: string
   route: string
   meta: Array<{ label: string, value: string }>
+}
+
+interface DeviceResource extends WorkbenchObject {
+  model: string
+  location: string
+  status: string
+  statusText: string
 }
 
 const router = useRouter()
@@ -265,6 +308,8 @@ const activeResourceTab = ref<ResourceTab>('devices')
 const activeWorkMode = ref<WorkMode>('overview')
 const selectedTool = ref('图层')
 const themeMode = ref<'night' | 'day'>('night')
+const selectedAirportId = ref(commandAirports[0]?.id || '')
+const activeOperatorId = ref(commandOperators[0]?.id || '')
 
 const modules = [
   { key: 'project' as const, label: '项目' },
@@ -295,24 +340,26 @@ const mapTools = [
   { key: '回放', label: '回放' },
 ]
 
-const devices = [
-  {
-    id: 'dock-a',
-    name: '东区机库 A',
-    model: 'DJI Dock 2',
-    location: '合肥高新区',
-    status: 'online',
-    statusText: '在线',
-    kind: '机场设备',
-    route: '/devices',
-    description: '用于东区日常巡检任务，当前空闲，可创建机场航线任务。',
-    meta: [
-      { label: '设备 SN', value: '7CTDM3D001' },
-      { label: '电池', value: '96%' },
-      { label: '网络', value: '4G / 良好' },
-      { label: '固件', value: '09.02.04.12' },
-    ],
-  },
+const airportDevices: DeviceResource[] = commandAirports.map(airport => ({
+  id: airport.id,
+  name: airport.name,
+  model: airport.dockModel,
+  location: airport.location,
+  status: airport.status,
+  statusText: airport.statusText,
+  kind: '机场设备',
+  route: '/devices',
+  description: airport.description,
+  meta: [
+    { label: '设备 SN', value: airport.serialNumber },
+    { label: '关联无人机', value: airport.droneName },
+    { label: '任务航线', value: airport.routeCode },
+    { label: '控制席位', value: getOperatorForAirport(airport.id)?.name || '待分配' },
+  ],
+}))
+
+const devices: DeviceResource[] = [
+  ...airportDevices,
   {
     id: 'drone-01',
     name: '巡检无人机 01',
@@ -460,6 +507,33 @@ const mediaItems = [
 
 const selectedObject = ref<WorkbenchObject>(devices[0])
 
+const selectedAirport = computed(() => commandAirports.find(airport => airport.id === selectedAirportId.value) || null)
+
+const activeOperator = computed(() => {
+  const selectedSeat = commandOperators.find(operator => operator.id === activeOperatorId.value)
+  if (selectedSeat) return selectedSeat
+  return selectedAirport.value ? getOperatorForAirport(selectedAirport.value.id) || commandOperators[0] : commandOperators[0]
+})
+
+const canEnterCommandFlight = computed(() => Boolean(selectedAirport.value))
+
+const commandEntryHint = computed(() => {
+  if (!selectedAirport.value) return '请选择一个机场后再进入座舱'
+  const seat = getOperatorForAirport(selectedAirport.value.id)
+  return seat ? `${seat.name} 正在控制 ${selectedAirport.value.name}` : `${selectedAirport.value.name} 等待席位接管`
+})
+
+const onlineSeatCount = computed(() => commandOperators.length)
+
+const seatRows = computed(() => commandOperators.map(operator => {
+  const airport = commandAirports.find(item => item.id === operator.airportId)
+  return {
+    ...operator,
+    airportName: airport?.name || '未绑定机场',
+    statusText: operator.status === 'busy' ? '操纵中' : operator.status === 'online' ? '在线' : '备勤',
+  }
+}))
+
 const currentDate = computed(() => {
   const now = new Date()
   const weekday = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'][now.getDay()]
@@ -474,10 +548,25 @@ function openRoute (path: string) {
   router.push(path)
 }
 
+function openCommandFlight () {
+  if (!selectedAirport.value) {
+    activeResourceTab.value = 'devices'
+    return
+  }
+  const operator = activeOperator.value || getOperatorForAirport(selectedAirport.value.id)
+  router.push({
+    path: '/command-flight',
+    query: {
+      dockId: selectedAirport.value.id,
+      operatorId: operator?.id || '',
+    },
+  })
+}
+
 function selectModule (module: ModuleKey) {
   activeModule.value = module
   if (module === 'command') {
-    openRoute('/command-flight')
+    openCommandFlight()
   }
 }
 
@@ -487,6 +576,19 @@ function openDetailRoute () {
 
 function selectObject (object: WorkbenchObject) {
   selectedObject.value = object
+  const airport = commandAirports.find(item => item.id === object.id)
+  if (airport) {
+    selectedAirportId.value = airport.id
+    const seat = getOperatorForAirport(airport.id)
+    if (seat) activeOperatorId.value = seat.id
+  }
+}
+
+function selectSeat (operatorId: CommandOperator['id'], airportId: string) {
+  activeOperatorId.value = operatorId
+  selectedAirportId.value = airportId
+  const airportDevice = devices.find(device => device.id === airportId)
+  if (airportDevice) selectedObject.value = airportDevice
 }
 
 function selectTool (tool: string) {
@@ -516,7 +618,7 @@ function createMarker (AMap: any, item: { id: string, name: string, position: nu
   })
   marker.on('click', () => {
     const match = [...devices, ...routes, ...layers].find(resource => resource.id === item.id)
-    if (match) selectedObject.value = match
+    if (match) selectObject(match)
   })
   return marker
 }
@@ -529,7 +631,7 @@ function renderMapOverlays (AMap: any, map: any) {
     [117.326, 31.892],
   ]
   const markers = [
-    { id: 'dock-a', name: '东区机库 A', type: 'dock', position: [117.244, 31.858] },
+    ...commandAirports.map(airport => ({ id: airport.id, name: airport.name, type: 'dock', position: airport.position })),
     { id: 'drone-01', name: '巡检无人机 01', type: 'drone', position: [117.292, 31.866] },
     { id: 'robot-r1', name: '机器狗 R1', type: 'robot', position: [117.315, 31.875] },
   ].map(item => createMarker(AMap, item))
@@ -912,7 +1014,8 @@ button {
 
 .resource-list,
 .alert-stream,
-.route-card-list {
+.route-card-list,
+.seat-list {
   display: grid;
   gap: 8px;
 }
@@ -937,6 +1040,10 @@ button {
 .resource-list article.active {
   border-color: #00d8ff;
   background: var(--workbench-card-active);
+}
+
+.resource-list article.airport {
+  border-color: rgba(0, 216, 255, 0.28);
 }
 
 .resource-list strong,
@@ -966,6 +1073,14 @@ button {
   box-shadow: 0 0 14px #00d8ff;
 }
 
+.resource-dot.idle {
+  background: #ffcf5a;
+}
+
+.resource-dot.offline {
+  background: #778a9a;
+}
+
 .resource-dot.route {
   border-radius: 2px;
   background: #ffcc4d;
@@ -974,6 +1089,77 @@ button {
 .resource-dot.layer {
   border-radius: 2px;
   background: #b77cff;
+}
+
+.airport-command-entry {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid rgba(0, 216, 255, 0.24);
+  background: rgba(0, 118, 186, 0.16);
+}
+
+.airport-command-entry span,
+.airport-command-entry small {
+  display: block;
+  color: var(--workbench-muted);
+  font-size: 12px;
+}
+
+.airport-command-entry strong {
+  display: block;
+  margin: 3px 0;
+  color: var(--workbench-title);
+}
+
+.airport-command-entry button {
+  height: 34px;
+  padding: 0 12px;
+  color: #001624;
+  background: linear-gradient(135deg, #61efff, #25a8ff);
+}
+
+.airport-command-entry button:disabled,
+.action-grid button:disabled,
+.module-tabs button.disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.seat-list article {
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 8px;
+  border: 1px solid var(--workbench-border);
+  background: var(--workbench-panel-soft);
+  cursor: pointer;
+}
+
+.seat-list article.active {
+  border-color: rgba(98, 230, 255, 0.74);
+  background: rgba(0, 130, 210, 0.22);
+}
+
+.seat-list strong,
+.seat-list small {
+  display: block;
+}
+
+.seat-list small {
+  color: var(--workbench-muted);
+}
+
+.seat-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 14px currentColor;
 }
 
 .alert-stream {

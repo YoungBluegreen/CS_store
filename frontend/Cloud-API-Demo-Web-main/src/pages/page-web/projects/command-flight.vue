@@ -8,19 +8,19 @@
         </button>
         <div class="flight-title">
           <span>Command Flight</span>
-          <strong>指令飞行座舱</strong>
+          <strong>{{ activeAirport.name }} · 指令飞行座舱</strong>
         </div>
         <div class="flight-state">
           <span class="state-dot" :class="{ armed: manualControl }"></span>
           <strong>{{ manualControl ? '人工接管中' : 'FPV 监视中' }}</strong>
-          <small>{{ currentTime }}</small>
+          <small>{{ activeOperator?.name || '未分配席位' }} · {{ currentTime }}</small>
         </div>
       </header>
 
       <aside class="left-console glass-panel">
         <div class="panel-head">
-          <span>Aircraft</span>
-          <strong>巡检无人机 01</strong>
+          <span>{{ activeAirport.name }}</span>
+          <strong>{{ activeAirport.droneName }}</strong>
         </div>
         <div class="telemetry-grid">
           <div v-for="item in telemetry" :key="item.label">
@@ -223,8 +223,8 @@
       <footer class="bottom-console glass-panel">
         <div class="mission-summary">
           <span>当前目标</span>
-          <strong>前往：东区 03 号巡检点</strong>
-          <small>预计 02:18 抵达，避障开启，返航高度 120m</small>
+          <strong>前往：{{ activeAirport.targetName }}</strong>
+          <small>{{ activeAirport.missionName }} · {{ activeAirport.routeCode }} · 返航高度 {{ activeAirport.altitude }}m</small>
         </div>
         <div class="command-log">
           <article v-for="log in commandLog" :key="log.id">
@@ -239,7 +239,7 @@
 
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeftOutlined,
   ArrowsAltOutlined,
@@ -250,6 +250,12 @@ import {
   SendOutlined,
   WarningOutlined,
 } from '@ant-design/icons-vue'
+import {
+  getAirportById,
+  getDefaultAirport,
+  getOperatorById,
+  getOperatorForAirport,
+} from './command-flight-context'
 
 interface FlightCommand {
   label: string
@@ -296,6 +302,8 @@ type ControlMode = 'GPS' | 'ATTI'
 type PrimaryView = 'fpv' | 'map'
 
 const router = useRouter()
+const route = useRoute()
+const bootAirport = getAirportById(route.query.dockId) || getDefaultAirport()
 const activeMode = ref('指令')
 const controlMode = ref<ControlMode>('GPS')
 const manualControl = ref(false)
@@ -314,10 +322,10 @@ const driftState = reactive({
 })
 const flightState = reactive<FlightState>({
   speed: 8.2,
-  altitude: 120,
-  heading: 327,
-  battery: 72,
-  wind: 3.1,
+  altitude: bootAirport.altitude,
+  heading: bootAirport.heading,
+  battery: bootAirport.battery,
+  wind: bootAirport.wind,
   x: 0,
   y: 0,
   throttle: 0,
@@ -342,9 +350,15 @@ const safetyState = reactive({
 })
 const commandLog = ref([
   { id: 1, time: '19:08:12', text: 'FPV 监视链路已建立' },
-  { id: 2, time: '19:08:18', text: '加载东区 03 号巡检点' },
-  { id: 3, time: '19:08:26', text: '避障、返航、链路状态检查完成' },
+  { id: 2, time: '19:08:18', text: `加载${bootAirport.targetName}` },
+  { id: 3, time: '19:08:26', text: `${bootAirport.name} 避障、返航、链路状态检查完成` },
 ])
+
+const requestedAirport = computed(() => getAirportById(route.query.dockId) || null)
+const activeAirport = computed(() => requestedAirport.value || bootAirport)
+const activeOperator = computed(() => (
+  getOperatorById(route.query.operatorId) || getOperatorForAirport(activeAirport.value.id) || null
+))
 
 const telemetry = computed(() => [
   { label: '高度', value: `${Math.round(flightState.altitude)}`, unit: 'm' },
@@ -478,7 +492,7 @@ const manualFlightCodes = new Set([
 ])
 
 const links = computed(() => [
-  { label: '图传链路', value: '18 Mbps', text: '良好', level: 'good' },
+  { label: '图传链路', value: activeAirport.value.network, text: '良好', level: 'good' },
   { label: '控制链路', value: manualControl.value ? '42 ms' : '待命', text: manualControl.value ? '接管' : '监视', level: 'good' },
   {
     label: controlMode.value === 'GPS' ? 'GNSS / RTK' : 'GNSS / RTK',
@@ -586,7 +600,7 @@ function applyMomentaryControl (code: string) {
     issueCommand('返航')
     flightState.x = 0
     flightState.y = 0
-    flightState.heading = 327
+    flightState.heading = activeAirport.value.heading
   }
   if (code === 'KeyN') {
     gimbalState.tilt = 0
@@ -676,7 +690,7 @@ function applyMomentaryControl (code: string) {
     logKeyboardAction('Fn 自定义键：标记当前巡检画面')
   }
   if (code === 'KeyH') {
-    logKeyboardAction('返航点已刷新为当前机场位置')
+    logKeyboardAction(`返航点已刷新为${activeAirport.value.name}`)
   }
 }
 
@@ -767,11 +781,15 @@ function issueCommand (label: string) {
   if (label.includes('返航')) {
     flightState.x = 0
     flightState.y = 0
-    flightState.heading = 327
+    flightState.heading = activeAirport.value.heading
   }
 }
 
 onMounted(() => {
+  if (!requestedAirport.value) {
+    router.replace('/dashboard')
+    return
+  }
   updateTime()
   clockTimer.value = window.setInterval(updateTime, 1000)
   simTimer.value = window.setInterval(updateSimulation, 80)
